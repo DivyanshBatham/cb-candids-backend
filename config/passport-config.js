@@ -6,14 +6,23 @@ const User = require("../models/user");
 passport.serializeUser((user, done) => {
 	// This is roughly like JSON.stringify() for data transmission over network.
 	// user: user.id -> id created by mongodb (Not user._id)
-	done(null, user.id); // Pass id to client.
+
+	// ENCODE WITH JWT:
+	console.log("PASPORT SERIALIZE.............,", user);
+	done(null, user.id); // Pass id to somewhere, and then set to Cookie.
+	// This is getting set into cookie (NET NINJA)
 });
 
 passport.deserializeUser((id, done) => {
 	// This is roughly like JSON.parse() for data transmission over network.
 	// Get id from client, and fetch user and then pass it with done.
+
+	// DECODE WITH JWT, INSTEAD OF FETHING FROM DB
+
+	console.log("PASPORT DESERIALIZE.............");
+	// Extrats User from the id sent with the cookie (NET NINJA)
 	User.findById(id).then(user => {
-		done(null, user);
+		done(null, user); // Attaches req.user (NET NINJA)
 	})
 });
 
@@ -25,12 +34,14 @@ passport.use(
 			callbackURL: "/auth/google/callback"
 		},
 		(accessToken, refreshToken, profile, done) => {
+			console.log("PASPORT CALLBACK............");
 			// Check if user already exists:
 			User.findOne({ googleid: profile.id }).then(curUser => {
 				if (curUser) {
 					// User already in the database:
 					console.log("Current User => ", curUser);
 					done(null, curUser); // Call passport.serialize()
+					// Whatever is passed is set as `req.user`
 				} else {
 					// User not found, add to the database:
 					const newUser = User({

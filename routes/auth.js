@@ -13,7 +13,14 @@ router.get(
 	passport.authenticate("google"),
 	// passport.authenticate("google", { failureRedirect: "/", session: false }),
 	(req, res) => {
-		res.send(req.user);
+		console.log("ROUTE HANDLER CALLBACK............");
+		res.redirect("/loggedin");
+		// console.log(req.user);
+		// res.send(req.user);
+		// req.logIn(req.user, function (err) { // <-- Log user in
+		// 	console.log(req.user, err);
+		// 	return res.redirect('/'); 
+		//  });
 		// var token = req.user.token;
 		// res.redirect("http://localhost:3000?token=" + token);
 	}

@@ -9,7 +9,7 @@ router.get('/', function (req, res, next) {
 
   const user = new User({
     _id: new mongoose.Types.ObjectId(),
-    name: "Name",
+    username: "Name",
     email: "Email"
   })
   

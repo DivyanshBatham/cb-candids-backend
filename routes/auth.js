@@ -3,6 +3,7 @@ const router = express.Router();
 const passport = require("passport");
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const User = require('../models/user.js')
 
 /* GET Google Authentication API. */
@@ -30,20 +31,54 @@ router.get(
 );
 
 router.post("/login", (req, res) => {
+	const { email, password } = req.body;
 
+	User.findOne({ email: email }).then(user => {
+		if (user) {
+			if (bcrypt.compareSync(password, user.password)) {
+
+				const jwtToken = jwt.sign(
+					{ sub: user.id },
+					process.env.JWT_SECRET,
+					// { expiresIn: '30s' }
+				);
+
+				res.status(200).json({
+					"success": true,
+					"data": {
+						user: {
+							email: user.email,
+							username: user.username,
+							organization: user.organization
+						},
+					},
+					"token": jwtToken
+				});
+
+			} else {
+				res.status(400).send("Invalid Password")
+			}
+		} else {
+			res.status(400).send("Cannot find user")
+		}
+	})
 })
 
 router.post("/register", (req, res) => {
 	const { email, username, password, organization } = req.body;
 	const errors = {};
 	// Data Validations:
-	// Valid Username:
+	// Check for Username:
 	// if (check_for_username)
 	// 	errors.email = "Invalid Username";
 
-	// // Valid Email:
+	// Check for Email:
 	// if (check_for_email)
 	// 	errors.email = "Invalid Email";
+
+	// Check for Password:
+	// if (check_for_password)
+	// 	errors.password = "Doesn't meet the conditions";
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
@@ -74,42 +109,44 @@ router.post("/register", (req, res) => {
 
 			} else {
 
-				const newUser = new User({
-					_id: new mongoose.Types.ObjectId(),
-					username: username,
-					email: email,
-					password: password,
-					organization: organization
-				})
+				bcrypt.hash(password, +process.env.BCRYPT_SALT_ROUNDS)
+					.then(hashedPassword => {
 
-				newUser.save()
-					.then(user => {
-						console.log("New User => ", user, typeof user);
-
-						const jwtToken = jwt.sign(
-							{ sub: user.id },
-							process.env.JWT_SECRET,
-							{ expiresIn: '30s' }
-						);
-
-						console.log(jwtToken);
-
-						res.status(200).json({
-							"success": true,
-							"data": {
-								// TODO, send JWT Token
-								user: user,
-								token: jwtToken
-							}
+						const newUser = new User({
+							_id: new mongoose.Types.ObjectId(),
+							username: username,
+							email: email,
+							password: hashedPassword,
+							organization: organization
 						})
-					})
-					.catch(err => console.err(err))
 
-			}
-		})
+						newUser.save()
+							.then(user => {
 
-	}
+								const jwtToken = jwt.sign(
+									{ sub: user.id },
+									process.env.JWT_SECRET,
+									// { expiresIn: '30s' }
+								);
 
+								res.status(200).json({
+									"success": true,
+									"data": {
+										user: {
+											email: user.email,
+											username: user.username,
+											organization: user.organization
+										},
+									},
+									"token": jwtToken
+								})
+							})
+							.catch(err => console.err(err))
+
+					}); // Bcrypt
+			} // Else
+		}) // Duplication Check
+	} // Data Sanitization
 })
 
 module.exports = router;

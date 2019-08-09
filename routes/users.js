@@ -1,5 +1,5 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 const mongoose = require('mongoose');
 const User = require('../models/user.js')
 
@@ -9,7 +9,7 @@ router.get('/', function (req, res, next) {
 
   const user = new User({
     _id: new mongoose.Types.ObjectId(),
-    name: "Name",
+    username: "Name",
     email: "Email"
   })
   

@@ -31,6 +31,7 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
+// Fetch all the Posts:
 router.get("/", jwtAuthCheck, (req, res) => {
     Post.find()
         .populate({ path: 'author', model: User, select: ['username', 'email'] })
@@ -60,6 +61,7 @@ router.get("/", jwtAuthCheck, (req, res) => {
         })
 });
 
+// Create a new Post:
 router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
     const { title, description = null, taggedUsers = "[]" } = req.body;
     const errors = {};
@@ -110,8 +112,39 @@ router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
 
 });
 
-router.post("/like", jwtAuthCheck, (req, res) => {
-    const { postId } = req.body;
+
+// Delete a Post:
+router.delete("/:postId", jwtAuthCheck, (req, res) => {
+    const { postId } = req.params;
+
+    Post.findOneAndDelete({
+        _id: postId,
+        author: req.userId
+    }).then(post => {
+        console.log("Deleted Post => ", post);
+        if (post)
+            res.status(200).json({
+                "success": true,
+            });
+        else
+            res.status(200).json({
+                "success": false,
+                "errors": ["Unable to delete Post, id and author.id mismatch"]
+            });
+    }).catch(err => {
+        console.log(err)
+        res.status(200).json({
+            "success": false,
+            "errors": ["Unable to delete Post"]
+        });
+    })
+
+});
+
+
+// Like a Post
+router.post("/:postId/likes", jwtAuthCheck, (req, res) => {
+    const { postId } = req.params;
 
     Post.findByIdAndUpdate(postId, {
         $addToSet: {
@@ -133,33 +166,6 @@ router.post("/like", jwtAuthCheck, (req, res) => {
         res.status(200).json({
             "success": false,
             "errors": ["Unable to like Post"]
-        });
-    })
-
-});
-
-router.delete("/", jwtAuthCheck, (req, res) => {
-    const { postId } = req.body;
-
-    Post.findOneAndDelete({
-        _id: postId,
-        author: req.userId
-    }).then(post => {
-        console.log("Deleted Post => ", post);
-        if (post)
-            res.status(200).json({
-                "success": true,
-            });
-        else
-            res.status(200).json({
-                "success": false,
-                "errors": ["Unable to delete Post, id and author.id mismatch"]
-            });
-    }).catch(err => {
-        console.log(err)
-        res.status(200).json({
-            "success": false,
-            "errors": ["Unable to delete Post"]
         });
     })
 

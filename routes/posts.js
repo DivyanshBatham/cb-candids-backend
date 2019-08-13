@@ -126,13 +126,40 @@ router.post("/like", jwtAuthCheck, (req, res) => {
         else
             res.status(200).json({
                 "success": false,
-                "errors": ["Unable to fetch Posts"]
+                "errors": ["Unable to like Post"]
             });
     }).catch(err => {
         console.log(err)
         res.status(200).json({
             "success": false,
-            "errors": ["Unable to fetch Posts"]
+            "errors": ["Unable to like Post"]
+        });
+    })
+
+});
+
+router.delete("/", jwtAuthCheck, (req, res) => {
+    const { postId } = req.body;
+
+    Post.findOneAndDelete({
+        _id: postId,
+        author: req.userId
+    }).then(post => {
+        console.log("Deleted Post => ", post);
+        if (post)
+            res.status(200).json({
+                "success": true,
+            });
+        else
+            res.status(200).json({
+                "success": false,
+                "errors": ["Unable to delete Post, id and author.id mismatch"]
+            });
+    }).catch(err => {
+        console.log(err)
+        res.status(200).json({
+            "success": false,
+            "errors": ["Unable to delete Post"]
         });
     })
 

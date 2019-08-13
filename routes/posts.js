@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-    if ( /\.(jpg|jpeg|png|gif)$/.test(file.originalname) )
+    if (/\.(jpg|jpeg|png|gif)$/.test(file.originalname))
         cb(null, true);
     else
         cb(new Error("Unsupported File Type"), false); // Ignores file, we can throw error.
@@ -61,8 +61,22 @@ router.get("/", jwtAuthCheck, (req, res) => {
 });
 
 router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
-    // TODO: Add validation for form-data:
-    const { title, description, taggedUsers = "[]" } = req.body;
+    const { title, description = null, taggedUsers = "[]" } = req.body;
+    const errors = {};
+
+    // Validation for empty data:
+    if (title === undefined)
+        errors.title = "Title is required";
+    if (req.file === undefined)
+        errors.file = "Image is required";
+
+    // Data is Invalid, respond immediately.
+    if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
+        res.status(200).json({
+            "success": false,
+            "errors": errors
+        });
+    }
 
     const post = new Post({
         _id: new mongoose.Types.ObjectId(),

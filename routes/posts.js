@@ -110,4 +110,33 @@ router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
 
 });
 
+router.post("/like", jwtAuthCheck, (req, res) => {
+    const { postId } = req.body;
+
+    Post.findByIdAndUpdate(postId, {
+        $addToSet: {
+            likes: req.userId
+        }
+    }).then(post => {
+        console.log("Liked Post => ", post);
+        if (post)
+            res.status(200).json({
+                "success": true,
+            });
+        else
+            res.status(200).json({
+                "success": false,
+                "errors": ["Unable to fetch Posts"]
+            });
+    }).catch(err => {
+        console.log(err)
+        res.status(200).json({
+            "success": false,
+            "errors": ["Unable to fetch Posts"]
+        });
+    })
+
+});
+
+
 module.exports = router;

@@ -242,5 +242,39 @@ router.post("/:postId/likes", jwtAuthCheck, (req, res) => {
 
 });
 
+// Comment a Post
+router.post("/:postId/comments", jwtAuthCheck, (req, res) => {
+    const { postId } = req.params;
+    const { comment } = req.body;
+
+    Post.findByIdAndUpdate(postId, {
+        $push: {
+            comments: {
+                comment: comment,
+                author: req.userId,
+                likes: [],
+            }
+        }
+    }).then(post => {
+        console.log("Commented on Post => ", post);
+        if (post)
+            res.status(200).json({
+                "success": true,
+            });
+        else
+            res.status(200).json({
+                "success": false,
+                "errors": ["Cannot find the post"]
+            });
+    }).catch(err => {
+        console.log(err)
+        res.status(200).json({
+            "success": false,
+            "errors": ["Unable to comment on Post"]
+        });
+    })
+
+});
+
 
 module.exports = router;

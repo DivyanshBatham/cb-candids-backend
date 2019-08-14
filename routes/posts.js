@@ -39,6 +39,7 @@ router.get("/", jwtAuthCheck, (req, res) => {
         .populate({ path: 'likes', model: User, select: 'username' })
         .populate({ path: 'taggedUsers', model: User, select: 'username' })
         .populate({ path: 'comments.author', model: User, select: 'username' })
+        .populate({ path: 'comments.likes', model: User, select: 'username' })
         .then(posts => {
             console.log("Posts => ", posts);
             if (posts)
@@ -116,7 +117,7 @@ router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
 // Delete a Post:
 router.delete("/:postId", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
-
+    // TODO: Delete the image
     Post.findOneAndDelete({
         _id: postId,
         author: req.userId
@@ -273,6 +274,26 @@ router.post("/:postId/comments", jwtAuthCheck, (req, res) => {
             "errors": ["Unable to comment on Post"]
         });
     })
+
+});
+
+// Like a comment
+router.post("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
+    const { postId, commentId } = req.params;
+
+    Post.findById(postId).then(post => {
+        for (let comment of post.comments) {
+            if (comment.id === commentId) {
+                if (!comment.likes.includes(req.userId)) {
+                    comment.likes.push(req.userId);
+                }
+                break;
+            }
+        }
+        post.save().then(likedPost => {
+            res.json(likedPost);
+        }).catch(err => console.log(err));
+    }).catch(err => console.log(err));
 
 });
 

@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const Post = require('../models/post');
 const User = require('../models/user');
 const jwtAuthCheck = require('../middlewares/jwtAuthCheck');
@@ -68,7 +69,7 @@ router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
 
     // Validation for empty data:
     if (title === undefined)
-        errors.title = "Title is required";
+        errors.title = "Title cannot be Empty";
     if (req.file === undefined)
         errors.file = "Image is required";
 
@@ -78,38 +79,37 @@ router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
             "success": false,
             "errors": errors
         });
-    }
+    } else {
+        const post = new Post({
+            _id: new mongoose.Types.ObjectId(),
+            title: title,
+            description: description,
+            taggedUsers: JSON.parse(taggedUsers),
+            imgSrc: req.file.filename,
+            author: req.userId,
+            likes: [],
+            comments: []
+        })
 
-    const post = new Post({
-        _id: new mongoose.Types.ObjectId(),
-        title: title,
-        description: description,
-        taggedUsers: JSON.parse(taggedUsers),
-        imgSrc: req.file.filename,
-        author: req.userId,
-        likes: [],
-        comments: []
-    })
-
-    post.save().then(post => {
-        if (post) {
-            res.status(200).json({
-                "success": true,
-                "data": post
-            });
-        } else
+        post.save().then(post => {
+            if (post) {
+                res.status(200).json({
+                    "success": true,
+                    "data": post
+                });
+            } else
+                res.status(200).json({
+                    "success": false,
+                    "errors": ["Unable to create Post"]
+                });
+        }).catch(err => {
+            console.log(err)
             res.status(200).json({
                 "success": false,
                 "errors": ["Unable to create Post"]
             });
-    }).catch(err => {
-        console.log(err)
-        res.status(200).json({
-            "success": false,
-            "errors": ["Unable to create Post"]
-        });
-    })
-
+        })
+    }
 });
 
 
@@ -138,6 +138,77 @@ router.delete("/:postId", jwtAuthCheck, (req, res) => {
             "errors": ["Unable to delete Post"]
         });
     })
+
+});
+
+// TODO: Edit a Post: 
+router.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
+    const { postId } = req.params;
+    const { title, description, taggedUsers } = req.body;
+    const changes = {}, errors = {};
+
+    if (title !== undefined) {
+        if (title === "")
+            errors.title = "Title cannot be Empty";
+        else
+            changes.title = title;
+    }
+    if (description !== undefined)
+        changes.description = description;
+    if (taggedUsers)
+        changes.taggedUsers = JSON.parse(taggedUsers);
+    if (req.file)
+        changes.imgSrc = req.file.filename;
+
+    if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
+        // Data is Invalid, respond immediately.
+        res.status(200).json({
+            "success": false,
+            "errors": errors,
+        });
+
+        // Errors found, no need to keep the file:
+        if (req.file)
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.log("Error deleting the file: ", err);
+                console.log(curPath, ' was deleted');
+            });
+
+    } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {
+        // Changes found, update the post:
+        Post.findById(postId).then(curPost => {
+            if (curPost) {
+                const curPath = curPost.imgSrc;
+                Object.assign(curPost, changes);
+                curPost.save().then(updatedPost => {
+                    console.log("Updated Post =>", updatedPost);
+                    res.status(200).json({
+                        "success": true,
+                        "data": {
+                            post: curPost
+                        }
+                    });
+                    // If new file was uploaded, delete the old one:
+                    if (req.file)
+                        fs.unlink("uploads/" + curPath, (err) => {
+                            if (err) throw err;
+                            console.log(curPath, ' was deleted');
+                        });
+                });
+            } else {
+                res.status(200).json({
+                    "success": false,
+                    "errors": ["No such post found"]
+                });
+            }
+        })
+
+    } else {
+        res.status(200).json({
+            "success": false,
+            "errors": ["No changes"]
+        });
+    }
 
 });
 

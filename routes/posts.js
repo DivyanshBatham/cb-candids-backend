@@ -290,11 +290,25 @@ router.post("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
                 break;
             }
         }
-        post.save().then(likedPost => {
-            res.json(likedPost);
-        }).catch(err => console.log(err));
-    }).catch(err => console.log(err));
+        post.save().then(post => {
+            res.status(200).json({
+                "success": true,
+            });
+        }).catch(err => {
+            console.log(err)
+            res.status(200).json({
+                "success": false,
+                "errors": ["Unable to like Comment"]
+            });
+        });
 
+    }).catch(err => {
+        console.log(err)
+        res.status(200).json({
+            "success": false,
+            "errors": ["Unable to like Comment"]
+        });
+    });
 });
 
 // Delete a comment

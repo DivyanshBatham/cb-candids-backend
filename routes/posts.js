@@ -8,6 +8,8 @@ const User = require('../models/user');
 const jwtAuthCheck = require('../middlewares/jwtAuthCheck');
 const router = express.Router();
 
+// TODO: Make a separate router for Comments.
+
 const storage = multer.diskStorage({
     // where the file should be saved:
     destination: function (req, file, cb) {
@@ -248,6 +250,8 @@ router.post("/:postId/comments", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
     const { comment } = req.body;
 
+    // TODO: Validate comment.
+
     Post.findByIdAndUpdate(postId, {
         $push: {
             comments: {
@@ -261,52 +265,64 @@ router.post("/:postId/comments", jwtAuthCheck, (req, res) => {
         if (post)
             res.status(200).json({
                 "success": true,
+                "data": post
             });
         else
             res.status(200).json({
                 "success": false,
-                "errors": ["Cannot find the post"]
+                "errors": ["Post not Found"]
             });
     }).catch(err => {
         console.log(err)
         res.status(200).json({
             "success": false,
-            "errors": ["Unable to comment on Post"]
+            "errors": ["Post not Found"]
         });
     })
 
 });
 
 // Like a comment
+// TODO: Should I change this to :commentId/likes?
 router.post("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
     const { postId, commentId } = req.params;
 
     Post.findById(postId).then(post => {
+        let commentFound = false;
         for (let comment of post.comments) {
             if (comment.id === commentId) {
                 if (!comment.likes.includes(req.userId)) {
                     comment.likes.push(req.userId);
+                    commentFound = true;
+                    break;
                 }
-                break;
             }
         }
-        post.save().then(post => {
-            res.status(200).json({
-                "success": true,
+        if (commentFound) {
+            post.save().then(post => {
+                res.status(200).json({
+                    "success": true,
+                    "data": post
+                });
+            }).catch(err => {
+                console.log(err)
+                res.status(200).json({
+                    "success": false,
+                    "errors": ["Unable to Like Comment"]
+                });
             });
-        }).catch(err => {
-            console.log(err)
+        } else {
             res.status(200).json({
                 "success": false,
-                "errors": ["Unable to like Comment"]
+                "errors": ["Comment Not Found"]
             });
-        });
+        }
 
     }).catch(err => {
         console.log(err)
         res.status(200).json({
             "success": false,
-            "errors": ["Unable to like Comment"]
+            "errors": ["Post not Found"]
         });
     });
 });
@@ -320,6 +336,7 @@ router.delete("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
         post.save().then(post => {
             res.status(200).json({
                 "success": true,
+                "data": post
             });
         }).catch(err => {
             console.log(err)
@@ -332,9 +349,74 @@ router.delete("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
         console.log(err)
         res.status(200).json({
             "success": false,
-            "errors": ["Unable to delete Comment"]
+            "errors": ["Post not Found"]
         });
     });
+
+});
+
+// Edit a comment
+router.patch("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
+    const { postId, commentId } = req.params;
+    const { newComment } = req.body;
+
+    const changes = {}, errors = {};
+
+    if (newComment !== undefined) {
+        if (newComment === "")
+            errors.comment = "Comment cannot be Empty";
+        else
+            changes.comment = newComment;
+    }
+
+    if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
+        // Data is Invalid, respond immediately.
+        res.status(200).json({
+            "success": false,
+            "errors": errors,
+        });
+    } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {
+        Post.findById(postId).then(post => {
+            let commentFound = false;
+            for (let commentObj of post.comments) {
+                if (commentObj.id === commentId) {
+                    commentObj.comment = newComment;
+                    commentFound = true;
+                    break;
+                }
+            }
+            if (commentFound) {
+                post.save().then(post => {
+                    res.status(200).json({
+                        "success": true,
+                        "data": post
+                    });
+                }).catch(err => {
+                    console.log(err)
+                    res.status(200).json({
+                        "success": false,
+                        "errors": ["Unable to edit Comment"]
+                    });
+                });
+            } else {
+                res.status(200).json({
+                    "success": false,
+                    "errors": ["Comment not Found"]
+                });
+            }
+        }).catch(err => {
+            console.log(err)
+            res.status(200).json({
+                "success": false,
+                "errors": ["Post not Found"]
+            });
+        });
+    } else {
+        res.status(200).json({
+            "success": false,
+            "errors": ["No changes"]
+        });
+    }
 
 });
 

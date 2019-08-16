@@ -297,5 +297,32 @@ router.post("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
 
 });
 
+// Delete a comment
+router.delete("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
+    const { postId, commentId } = req.params;
+
+    Post.findById(postId).then(post => {
+        post.comments = post.comments.filter(comment => comment.id !== commentId);
+        post.save().then(post => {
+            res.status(200).json({
+                "success": true,
+            });
+        }).catch(err => {
+            console.log(err)
+            res.status(200).json({
+                "success": false,
+                "errors": ["Unable to delete Comment"]
+            });
+        });
+    }).catch(err => {
+        console.log(err)
+        res.status(200).json({
+            "success": false,
+            "errors": ["Unable to delete Comment"]
+        });
+    });
+
+});
+
 
 module.exports = router;

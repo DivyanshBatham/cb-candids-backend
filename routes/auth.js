@@ -4,7 +4,16 @@ const passport = require("passport");
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const nodemailer = require("nodemailer");
 const User = require('../models/user.js')
+
+const mailTransport = nodemailer.createTransport({
+	service: "gmail",
+	auth: {
+		user: process.env.NODE_MAILER_EMAIL,
+		pass: process.env.NODE_MAILER_PASSWORD
+	}
+});
 
 /* GET Google Authentication API. */
 router.get(
@@ -148,5 +157,88 @@ router.post("/register", (req, res) => {
 		}) // Duplication Check
 	} // Data Sanitization
 })
+
+
+router.post("/forgetPassword", (req, res) => {
+	const { email } = req.body;
+
+	User.findOne({ email: email }).then(user => {
+		if (user) {
+
+			// Generate token using userId:
+			const jwtToken = jwt.sign(
+				{ sub: user.id },
+				process.env.JWT_SECRET,
+				{ expiresIn: '10m' } // Reset Link will be valid for only 5 mins.
+			);
+
+			// Send an email with generated Token:
+			const mailOptions = {
+				from: `"Candids" <${process.env.NODE_MAILER_EMAIL}>`,
+				to: email,
+				subject: "Candids - Reset Password",
+				text: "Candids - Reset Password",
+				html: `Click here to reset your password ${jwtToken}`
+			};
+
+			mailTransport
+				.sendMail(mailOptions)
+				.then(response => {
+					console.log(`Password Reset link sent to: ${email}`);
+					res.json(response);
+				})
+				.catch(err => {
+					console.error(err);
+					res.json(err);
+				});
+
+		} else {
+			res.status(400).send("Cannot find user")
+		}
+	})
+})
+
+router.post("/resetPassword", (req, res) => {
+	const { password, token } = req.body;
+
+	// Verify Token:
+	jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+		if (err)
+			res.status(403).json({
+				"success": false
+			});
+		else {
+			
+			bcrypt.hash(password, +process.env.BCRYPT_SALT_ROUNDS)
+				.then(hashedPassword => {
+
+					User.findByIdAndUpdate(payload.sub, {
+						password: hashedPassword
+					}).then(user => {
+						const jwtToken = jwt.sign(
+							{ sub: user.id },
+							process.env.JWT_SECRET,
+							// { expiresIn: '30s' }
+						);
+
+						res.status(200).json({
+							"success": true,
+							"data": {
+								user: {
+									email: user.email,
+									username: user.username,
+									organization: user.organization
+								},
+							},
+							"token": jwtToken
+						})
+					}).catch(err => console.err(err))
+
+				}); // Bcrypt
+
+		} // Else
+	})
+})
+
 
 module.exports = router;

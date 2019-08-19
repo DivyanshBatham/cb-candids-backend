@@ -78,12 +78,12 @@ router.post("/register", (req, res) => {
 	const errors = {};
 	// Data Validations:
 	// Check for Username:
-	// if (check_for_username)
-	// 	errors.email = "Invalid Username";
+	if (!/^\w{3,}$/.test(username))
+		errors.email = "Invalid Username";
 
 	// Check for Email:
-	// if (check_for_email)
-	// 	errors.email = "Invalid Email";
+	if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
+		errors.email = "Invalid Email";
 
 	// Check for Password:
 	// if (check_for_password)

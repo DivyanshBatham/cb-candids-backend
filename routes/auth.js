@@ -126,7 +126,8 @@ router.post("/register", (req, res) => {
 							username: username,
 							email: email,
 							password: hashedPassword,
-							organization: organization
+							organization: organization,
+							emailVerified: false
 						})
 
 						newUser.save()

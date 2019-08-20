@@ -256,36 +256,35 @@ router.post("/verifyEmail", (req, res) => {
 		else {
 			if (payload.type === 'verification') {
 
-				bcrypt.hash(password, +process.env.BCRYPT_SALT_ROUNDS)
-					.then(hashedPassword => {
+				User.findByIdAndUpdate(
+					payload.sub,
+					{ $set: { emailVerified: true } },
+					{ new: true }
+				).then(user => {
 
-						User.findByIdAndUpdate(payload.sub, {
-							password: hashedPassword
-						}).then(user => {
-							const accessToken = jwt.sign(
-								{
-									sub: user.id,
-									emailVerified: user.emailVerified
-								},
-								process.env.JWT_SECRET,
-								// { expiresIn: '30s' }
-							);
+					const newAccessToken = jwt.sign(
+						{
+							sub: user.id,
+							emailVerified: user.emailVerified
+						},
+						process.env.JWT_SECRET,
+						// { expiresIn: '30s' }
+					);
 
-							res.status(200).json({
-								"success": true,
-								"data": {
-									user: {
-										email: user.email,
-										username: user.username,
-										organization: user.organization,
-										emailVerified: user.emailVerified
-									},
-								},
-								"token": accessToken
-							})
-						}).catch(err => console.err(err))
+					res.status(200).json({
+						"success": true,
+						"data": {
+							user: {
+								email: user.email,
+								username: user.username,
+								organization: user.organization,
+								emailVerified: user.emailVerified
+							},
+						},
+						"token": newAccessToken
+					})
+				}).catch(err => console.err(err))
 
-					});
 
 			} else {
 				res.status(403).json({

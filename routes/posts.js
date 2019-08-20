@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const Post = require('../models/post');
 const User = require('../models/user');
-const jwtAuthCheck = require('../middlewares/jwtAuthCheck');
+const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const router = express.Router();
 
 // TODO: Make a separate router for Comments.

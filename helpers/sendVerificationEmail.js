@@ -18,7 +18,7 @@ const sendVerificationEmail = (user) => {
             type: "verification"
         },
         process.env.JWT_SECRET,
-        // { expiresIn: '10m' } // Reset Link will be valid for only 5 mins.
+        { expiresIn: '1day' }
     );
 
     // Send an email with generated Token:
@@ -60,11 +60,14 @@ const sendVerificationEmail = (user) => {
                 
                     <a
                         class="cta"
-                        href="https://localhost:4500/confirmEmail/?token=${verificationToken}"
+                        href="http://localhost:8080/verifyEmail/${verificationToken}"
                         style="color: white;font-weight: 500;transition: all 0.2s ease-in-out;text-decoration: none;background: #0fc96c;display: inline-block;font-size: 1.2em;padding: 0.7em 1em;border-radius: 10em;margin: 1em 0;box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.6);line-height: 1em;"
                         >Verify Email Address</a
                     >
-                
+                    <p style="line-height: 1.2em;color: #505050;">
+                    This link is only valid for 1 day.
+                    </p>
+
                     <hr style="border: 0;border-top: 2px solid whitesmoke;margin: 30px;" />
                     <p
                         class="note"

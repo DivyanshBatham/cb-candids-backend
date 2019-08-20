@@ -7,6 +7,7 @@ const logger = require('morgan');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const passport = require('passport');
+var cors = require('cors')
 dotenv.config();
 
 const passportConfig = require('./config/passport-config.js');
@@ -24,6 +25,7 @@ app.set('view engine', 'jade');
 mongoose.connect(process.env.URI, { useNewUrlParser: true });
 
 app.use(logger('dev'));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(

@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const Post = require('../models/post');
 const User = require('../models/user');
-const jwtAuthCheck = require('../middlewares/jwtAuthCheck');
+const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const router = express.Router();
 
 // TODO: Make a separate router for Comments.
@@ -220,11 +220,11 @@ router.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
 router.post("/:postId/likes", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
 
-    Post.findByIdAndUpdate(postId, {
-        $addToSet: {
-            likes: req.userId
-        }
-    }).then(post => {
+    Post.findByIdAndUpdate(
+        postId,
+        { $addToSet: { likes: req.userId } },
+        { new: true }
+    ).then(post => {
         console.log("Liked Post => ", post);
         if (post)
             res.status(200).json({
@@ -252,15 +252,19 @@ router.post("/:postId/comments", jwtAuthCheck, (req, res) => {
 
     // TODO: Validate comment.
 
-    Post.findByIdAndUpdate(postId, {
-        $push: {
-            comments: {
-                comment: comment,
-                author: req.userId,
-                likes: [],
+    Post.findByIdAndUpdate(
+        postId,
+        {
+            $push: {
+                comments: {
+                    comment: comment,
+                    author: req.userId,
+                    likes: [],
+                }
             }
-        }
-    }).then(post => {
+        },
+        { new: true }
+    ).then(post => {
         console.log("Commented on Post => ", post);
         if (post)
             res.status(200).json({

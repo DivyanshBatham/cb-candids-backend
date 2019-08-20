@@ -5,6 +5,8 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/user.js')
+const sendVerificationEmail = require('../helpers/sendVerificationEmail');
+const sendForgetPasswordEmail = require('../helpers/sendForgetPasswordEmail');
 
 /* GET Google Authentication API. */
 router.get(
@@ -38,7 +40,10 @@ router.post("/login", (req, res) => {
 			if (bcrypt.compareSync(password, user.password)) {
 
 				const jwtToken = jwt.sign(
-					{ sub: user.id },
+					{
+						sub: user.id,
+						emailVerified: user.emailVerified
+					},
 					process.env.JWT_SECRET,
 					// { expiresIn: '30s' }
 				);
@@ -49,7 +54,8 @@ router.post("/login", (req, res) => {
 						user: {
 							email: user.email,
 							username: user.username,
-							organization: user.organization
+							organization: user.organization,
+							emailVerified: user.emailVerified
 						},
 					},
 					"token": jwtToken
@@ -69,12 +75,12 @@ router.post("/register", (req, res) => {
 	const errors = {};
 	// Data Validations:
 	// Check for Username:
-	// if (check_for_username)
-	// 	errors.email = "Invalid Username";
+	if (!/^\w{3,}$/.test(username))
+		errors.email = "Invalid Username";
 
 	// Check for Email:
-	// if (check_for_email)
-	// 	errors.email = "Invalid Email";
+	if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
+		errors.email = "Invalid Email";
 
 	// Check for Password:
 	// if (check_for_password)
@@ -91,7 +97,6 @@ router.post("/register", (req, res) => {
 	} else {
 
 		User.find({ $or: [{ 'email': email }, { 'username': username }] }).then(users => {
-			console.log(users);
 			if (users.length > 0) {
 
 				// Checking for duplication:
@@ -117,29 +122,42 @@ router.post("/register", (req, res) => {
 							username: username,
 							email: email,
 							password: hashedPassword,
-							organization: organization
+							organization: organization,
+							emailVerified: false
 						})
 
 						newUser.save()
 							.then(user => {
 
-								const jwtToken = jwt.sign(
-									{ sub: user.id },
+								const accessToken = jwt.sign(
+									{
+										sub: user.id,
+										emailVerified: user.emailVerified
+									},
 									process.env.JWT_SECRET,
 									// { expiresIn: '30s' }
 								);
 
-								res.status(200).json({
-									"success": true,
-									"data": {
-										user: {
-											email: user.email,
-											username: user.username,
-											organization: user.organization
-										},
-									},
-									"token": jwtToken
-								})
+								sendVerificationEmail(user)
+									.then(response => {
+										console.log(`>>> Email Verification link sent to: ${user.email}`);
+										res.status(200).json({
+											"success": true,
+											"data": {
+												user: {
+													email: user.email,
+													username: user.username,
+													organization: user.organization,
+													emailVerified: user.emailVerified
+												},
+											},
+											"token": accessToken
+										})
+									})
+									.catch(err => {
+										console.error(err);
+									});
+
 							})
 							.catch(err => console.err(err))
 
@@ -147,6 +165,134 @@ router.post("/register", (req, res) => {
 			} // Else
 		}) // Duplication Check
 	} // Data Sanitization
+})
+
+
+router.post("/forgetPassword", (req, res) => {
+	const { email } = req.body;
+
+	User.findOne({ email: email }).then(user => {
+		if (user) {
+			sendForgetPasswordEmail(user)
+				.then(response => {
+					console.log(`>>> Password Reset link sent to: ${user.email}`);
+					res.status(200).json({
+						"success": true,
+					});
+				})
+				.catch(err => {
+					console.error(err);
+					res.status(200).json({
+						"success": false,
+					});
+				});
+		} else {
+			res.status(400).send("Cannot find user")
+		}
+	})
+})
+
+router.post("/resetPassword", (req, res) => {
+	const { password, token } = req.body;
+
+	// Verify Token:
+	jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+		if (err)
+			res.status(403).json({
+				"success": false
+			});
+		else {
+			if (payload.type === 'reset') {
+
+				bcrypt.hash(password, +process.env.BCRYPT_SALT_ROUNDS)
+					.then(hashedPassword => {
+
+						User.findByIdAndUpdate(payload.sub, {
+							password: hashedPassword
+						}).then(user => {
+							const accessToken = jwt.sign(
+								{
+									sub: user.id,
+									emailVerified: user.emailVerified
+								},
+								process.env.JWT_SECRET,
+								// { expiresIn: '30s' }
+							);
+
+							res.status(200).json({
+								"success": true,
+								"data": {
+									user: {
+										email: user.email,
+										username: user.username,
+										organization: user.organization,
+										emailVerified: user.emailVerified
+									},
+								},
+								"token": accessToken
+							})
+						}).catch(err => console.err(err))
+
+					});
+
+			} else {
+				res.status(403).json({
+					"success": false
+				});
+			}
+		}
+	})
+})
+
+router.post("/verifyEmail", (req, res) => {
+	const { token } = req.body;
+
+	// Verify Token:
+	jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+		if (err)
+			res.status(403).json({
+				"success": false
+			});
+		else {
+			if (payload.type === 'verification') {
+
+				User.findByIdAndUpdate(
+					payload.sub,
+					{ $set: { emailVerified: true } },
+					{ new: true }
+				).then(user => {
+
+					const newAccessToken = jwt.sign(
+						{
+							sub: user.id,
+							emailVerified: user.emailVerified
+						},
+						process.env.JWT_SECRET,
+						// { expiresIn: '30s' }
+					);
+
+					res.status(200).json({
+						"success": true,
+						"data": {
+							user: {
+								email: user.email,
+								username: user.username,
+								organization: user.organization,
+								emailVerified: user.emailVerified
+							},
+						},
+						"token": newAccessToken
+					})
+				}).catch(err => console.err(err))
+
+
+			} else {
+				res.status(403).json({
+					"success": false
+				});
+			}
+		}
+	})
 })
 
 module.exports = router;

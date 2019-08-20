@@ -7,6 +7,7 @@ const userSchema = mongoose.Schema({
     googleid: String,
     password: String,
     organization: String,
+    emailVerified: Boolean,
 })
 
 module.exports = mongoose.model('User', userSchema)

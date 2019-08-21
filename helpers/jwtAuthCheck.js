@@ -1,9 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const jwtAuthCheck = (req, res, next) => {
-    // Get Auth Header Value:
     const bearerHeader = req.headers['authorization'];
-    console.log("BEARER HEADER => ", bearerHeader);
 
     if (typeof bearerHeader !== 'undefined') {
         const bearerToken = bearerHeader.split(' ')[1];
@@ -14,13 +12,17 @@ const jwtAuthCheck = (req, res, next) => {
                     "success": false
                 });
             else {
-                console.log("JWT VERIFIED => ", payload);
-                req.userId = payload.sub;
-                next();
+                if (payload.type === 'access') {
+                    req.userId = payload.sub;
+                    next();
+                } else {
+                    res.status(403).json({
+                        "success": false
+                    });
+                }
             }
         })
     } else {
-        // Forbidden:
         res.status(403).json({
             "success": false
         });

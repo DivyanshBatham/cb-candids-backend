@@ -39,10 +39,11 @@ router.post("/login", (req, res) => {
 		if (user) {
 			if (bcrypt.compareSync(password, user.password)) {
 
-				const jwtToken = jwt.sign(
+				const accessToken = jwt.sign(
 					{
 						sub: user.id,
-						emailVerified: user.emailVerified
+						emailVerified: user.emailVerified,
+						type: "access"
 					},
 					process.env.JWT_SECRET,
 					// { expiresIn: '30s' }
@@ -58,7 +59,7 @@ router.post("/login", (req, res) => {
 							emailVerified: user.emailVerified
 						},
 					},
-					"token": jwtToken
+					"token": accessToken
 				});
 
 			} else {
@@ -132,7 +133,8 @@ router.post("/register", (req, res) => {
 								const accessToken = jwt.sign(
 									{
 										sub: user.id,
-										emailVerified: user.emailVerified
+										emailVerified: user.emailVerified,
+										type: "access"
 									},
 									process.env.JWT_SECRET,
 									// { expiresIn: '30s' }

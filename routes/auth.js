@@ -215,7 +215,8 @@ router.post("/resetPassword", (req, res) => {
 							const accessToken = jwt.sign(
 								{
 									sub: user.id,
-									emailVerified: user.emailVerified
+									emailVerified: user.emailVerified,
+									type: "access"
 								},
 								process.env.JWT_SECRET,
 								// { expiresIn: '30s' }
@@ -267,7 +268,8 @@ router.post("/verifyEmail", (req, res) => {
 					const newAccessToken = jwt.sign(
 						{
 							sub: user.id,
-							emailVerified: user.emailVerified
+							emailVerified: user.emailVerified,
+							type: "access"
 						},
 						process.env.JWT_SECRET,
 						// { expiresIn: '30s' }

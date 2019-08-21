@@ -123,7 +123,8 @@ router.post("/register", (req, res) => {
 							username: username,
 							email: email,
 							password: hashedPassword,
-							organization: organization,
+							// TODO: When Scaling remove this:
+							// organization: organization,
 							emailVerified: false
 						})
 

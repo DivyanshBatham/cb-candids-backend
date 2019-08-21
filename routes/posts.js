@@ -33,7 +33,7 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
-// Fetch all the Posts:
+// Fetch all Posts:
 postsRouter.get("/", jwtAuthCheck, (req, res) => {
     Post.find()
         .populate({ path: 'author', model: User, select: ['username', 'email'] })
@@ -64,7 +64,8 @@ postsRouter.get("/", jwtAuthCheck, (req, res) => {
         })
 });
 
-// Create a new Post:
+
+// Create Post:
 postsRouter.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
     const { title, description = null, taggedUsers = "[]" } = req.body;
     const errors = {};
@@ -114,24 +115,65 @@ postsRouter.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
     }
 });
 
+// Fetch specific Post:
+postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
+    const { postId } = req.params;
 
-// Delete a Post:
+    Post.findById(postId)
+        .populate({ path: 'author', model: User, select: ['username', 'email'] })
+        .populate({ path: 'likes', model: User, select: 'username' })
+        .populate({ path: 'taggedUsers', model: User, select: 'username' })
+        .populate({ path: 'comments.author', model: User, select: 'username' })
+        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .then(post => {
+            console.log(post);
+            if (post)
+                res.status(200).json({
+                    "success": true,
+                    "data": {
+                        post: post,
+                    },
+                });
+            else
+                res.status(200).json({
+                    "success": false,
+                    "errors": ["Unable to fetch Post"]
+                });
+        }).catch(err => {
+            console.log(err)
+            res.status(200).json({
+                "success": false,
+                "errors": ["Unable to fetch Post"]
+            });
+        })
+});
+
+
+// Delete Post:
 postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
-    // TODO: Delete the image
+
     Post.findOneAndDelete({
         _id: postId,
         author: req.userId
-    }).then(post => {
-        console.log("Deleted Post => ", post);
-        if (post)
-            res.status(200).json({
-                "success": true,
+    }).then(deletedPost => {
+        if (deletedPost) {
+            // Delete the uploaded image:
+            fs.unlink("uploads/" + deletedPost.imgSrc, (err) => {
+                if (err) {
+                    console.log(err);
+                } else {
+                    console.log(deletedPost.imgSrc, ' was deleted');
+                    res.status(200).json({
+                        "success": true,
+                    });
+                }
             });
+        }
         else
             res.status(200).json({
                 "success": false,
-                "errors": ["Unable to delete Post, id and author.id mismatch"]
+                "errors": ["Post Not Found"]
             });
     }).catch(err => {
         console.log(err)
@@ -193,8 +235,10 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
                     // If new file was uploaded, delete the old one:
                     if (req.file)
                         fs.unlink("uploads/" + curPath, (err) => {
-                            if (err) throw err;
-                            console.log(curPath, ' was deleted');
+                            if (err)
+                                console.log(err);
+                            else
+                                console.log(curPath, ' was deleted');
                         });
                 });
             } else {

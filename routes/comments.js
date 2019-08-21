@@ -4,8 +4,8 @@ const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const commentsRouter = express.Router({mergeParams: true});
 
 
-// Comment a Post
 // BASE URL = /:postId/comments
+// Comment Comment:
 commentsRouter.post("/", jwtAuthCheck, (req, res) => {
     console.log(">>>>>> HERE: ");
     console.log(">>>>>> req.params: ", req.params);
@@ -48,9 +48,8 @@ commentsRouter.post("/", jwtAuthCheck, (req, res) => {
 
 });
 
-// Like a comment
-// TODO: Should I change this to :commentId/likes?
-commentsRouter.post("/:commentId", jwtAuthCheck, (req, res) => {
+// Like Comment:
+commentsRouter.post("/:commentId/likes", jwtAuthCheck, (req, res) => {
     const { postId, commentId } = req.params;
 
     Post.findById(postId).then(post => {
@@ -93,7 +92,7 @@ commentsRouter.post("/:commentId", jwtAuthCheck, (req, res) => {
     });
 });
 
-// Delete a comment
+// Delete Comment:
 commentsRouter.delete("/:commentId", jwtAuthCheck, (req, res) => {
     const { postId, commentId } = req.params;
 
@@ -121,7 +120,7 @@ commentsRouter.delete("/:commentId", jwtAuthCheck, (req, res) => {
 
 });
 
-// Edit a comment
+// Edit Comment:
 commentsRouter.patch("/:commentId", jwtAuthCheck, (req, res) => {
     const { postId, commentId } = req.params;
     const { newComment } = req.body;

@@ -37,12 +37,15 @@ router.post("/login", (req, res) => {
 	const errors = {};
 
 	// Check for Email:
-	if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
+	if (!email) {
+		errors.email = "Email is required";
+	} else if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
 		errors.email = "Invalid Email";
 
 	// Check for Password:
-	if (password.length < 5 || !/\d/.test(password) || !/A-Z/.test(password))
-		errors.password = "Doesn't meet the required conditions";
+	if (!password) {
+		errors.password = "Password is required";
+	}
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
@@ -104,20 +107,26 @@ router.post("/register", (req, res) => {
 	const errors = {};
 	// Data Validations:
 	// Check for Username:
-	if (!/^\w{3,}$/.test(username))
-		errors.email = "Invalid Username";
+	if (!username) {
+		errors.username = "Username is required";
+	} else if (!/^\w{3,}$/.test(username))
+		errors.username = "Invalid Username";
 
 	// Check for Email:
-	if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
+	if (!email) {
+		errors.email = "Email is required";
+	} else if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
 		errors.email = "Invalid Email";
 
 	// Check for Password:
-	if (password.length < 5 || !/\d/.test(password) || !/A-Z/.test(password))
+	if (!password) {
+		errors.password = "Password is required";
+	} else if (password.length < 5 || !/\d/.test(password) || !/[A-Z]/.test(password))
 		errors.password = "Doesn't meet the required conditions";
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-		res.status(200).json({
+		res.status(400).json({
 			"success": false,
 			"errors": errors
 		});
@@ -135,7 +144,7 @@ router.post("/register", (req, res) => {
 						errors.username = "Username already exists";
 				})
 
-				res.status(200).json({
+				res.status(409).json({
 					"success": false,
 					"errors": errors
 				});
@@ -186,16 +195,18 @@ router.post("/register", (req, res) => {
 									})
 									.catch(err => {
 										console.error(err)
-										res.status(200).json({
+										res.status(500).json({
 											"success": false,
+											"errors": "Unable to send the email"
 										});
 									})
 
 							})
 							.catch(err => {
 								console.error(err)
-								res.status(200).json({
+								res.status(500).json({
 									"success": false,
+									"errors": err.message
 								});
 							})
 
@@ -208,79 +219,123 @@ router.post("/register", (req, res) => {
 
 router.post("/forgetPassword", (req, res) => {
 	const { email } = req.body;
+	const errors = {};
 
-	User.findOne({ email: email }).then(user => {
-		if (user) {
-			sendForgetPasswordEmail(user)
-				.then(response => {
-					console.log(`>>> Password Reset link sent to: ${user.email}`);
-					res.status(200).json({
-						"success": true,
-					});
-				})
-				.catch(err => {
-					console.error(err);
-					res.status(200).json({
-						"success": false,
-					});
+	// Check for Email:
+	if (!email) {
+		errors.email = "Email is required";
+	} else if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
+		errors.email = "Invalid Email";
+
+	// Data is Invalid, respond immediately. (Prevents DB Attacks)
+	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
+		res.status(400).json({
+			"success": false,
+			"errors": errors
+		});
+
+	} else {
+		User.findOne({ email: email }).then(user => {
+			if (user) {
+				sendForgetPasswordEmail(user)
+					.then(response => {
+						console.log(`>>> Password Reset link sent to: ${user.email}`);
+						res.status(200).json({
+							"success": true,
+						});
+					})
+					.catch(err => {
+						console.error(err)
+						res.status(500).json({
+							"success": false,
+							"errors": "Unable to send the email"
+						});
+					})
+			} else {
+				res.status(400).json({
+					"success": false,
+					"errors": {
+						"email": "User not found"
+					}
 				});
-		} else {
-			res.status(400).send("Cannot find user")
-		}
-	})
+			}
+		})
+	}
 })
 
 router.post("/resetPassword", (req, res) => {
 	const { password, token } = req.body;
 
-	// Verify Token:
-	jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
-		if (err)
-			res.status(403).json({
-				"success": false
-			});
-		else {
-			if (payload.type === 'reset') {
+	// Check for Password:
+	if (!password) {
+		errors.password = "Password is required";
+	} else if (password.length < 5 || !/\d/.test(password) || !/[A-Z]/.test(password))
+		errors.password = "Doesn't meet the required conditions";
 
-				bcrypt.hash(password, +process.env.BCRYPT_SALT_ROUNDS)
-					.then(hashedPassword => {
+	// Data is Invalid, respond immediately. (Prevents DB Attacks)
+	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
+		res.status(400).json({
+			"success": false,
+			"errors": errors
+		});
 
-						User.findByIdAndUpdate(payload.sub, {
-							password: hashedPassword
-						}).then(user => {
-							const accessToken = jwt.sign(
-								{
-									sub: user.id,
-									emailVerified: user.emailVerified,
-									type: "access"
-								},
-								process.env.JWT_SECRET,
-								// { expiresIn: '30s' }
-							);
-
-							res.status(200).json({
-								"success": true,
-								"data": {
-									user: {
-										email: user.email,
-										username: user.username,
-										organization: user.organization,
-										emailVerified: user.emailVerified
-									},
-								},
-								"token": accessToken
-							})
-						}).catch(err => console.err(err))
-
-					});
-
-			} else {
-				res.status(403).json({
-					"success": false
+	} else {
+		// Verify Token:
+		jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+			if (err)
+				res.status(401).json({
+					"success": false,
+					"errors": "Reset Token is invalid"
 				});
+			else {
+				if (payload.type === 'reset') {
+
+					bcrypt.hash(password, +process.env.BCRYPT_SALT_ROUNDS)
+						.then(hashedPassword => {
+
+							User.findByIdAndUpdate(payload.sub, {
+								password: hashedPassword
+							}).then(user => {
+								const accessToken = jwt.sign(
+									{
+										sub: user.id,
+										emailVerified: user.emailVerified,
+										type: "access"
+									},
+									process.env.JWT_SECRET,
+									// { expiresIn: '30s' }
+								);
+
+								res.status(200).json({
+									"success": true,
+									"data": {
+										user: {
+											email: user.email,
+											username: user.username,
+											organization: user.organization,
+											emailVerified: user.emailVerified
+										},
+									},
+									"token": accessToken
+								})
+							}).catch(err => {
+								console.err(err);
+								res.status(400).json({
+									"success": false,
+									"errors": "User not found"
+								});
+							})
+						});
+
+				} else {
+					res.status(401).json({
+						"success": false,
+						"errors": "Reset Token is invalid"
+					});
+				}
 			}
-		}
-	})
+		})
+	}
 })
 
 router.post("/verifyEmail", (req, res) => {
@@ -289,8 +344,9 @@ router.post("/verifyEmail", (req, res) => {
 	// Verify Token:
 	jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
 		if (err)
-			res.status(403).json({
-				"success": false
+			res.status(401).json({
+				"success": false,
+				"errors": "Verification Token is invalid"
 			});
 		else {
 			if (payload.type === 'verification') {
@@ -323,12 +379,19 @@ router.post("/verifyEmail", (req, res) => {
 						},
 						"token": newAccessToken
 					})
-				}).catch(err => console.err(err))
+				}).catch(err => {
+					console.err(err);
+					res.status(400).json({
+						"success": false,
+						"errors": "User not found"
+					});
+				})
 
 
 			} else {
-				res.status(403).json({
-					"success": false
+				res.status(401).json({
+					"success": false,
+					"errors": "Verification Token is invalid"
 				});
 			}
 		}

@@ -84,8 +84,8 @@ router.post("/register", (req, res) => {
 		errors.email = "Invalid Email";
 
 	// Check for Password:
-	// if (check_for_password)
-	// 	errors.password = "Doesn't meet the conditions";
+	if (password.length < 5 || !/\d/.test(password) || !/A-Z/.test(password))
+		errors.password = "Doesn't meet the required conditions";
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
@@ -158,11 +158,19 @@ router.post("/register", (req, res) => {
 										})
 									})
 									.catch(err => {
-										console.error(err);
-									});
+										console.error(err)
+										res.status(200).json({
+											"success": false,
+										});
+									})
 
 							})
-							.catch(err => console.err(err))
+							.catch(err => {
+								console.error(err)
+								res.status(200).json({
+									"success": false,
+								});
+							})
 
 					}); // Bcrypt
 			} // Else

@@ -115,7 +115,7 @@ router.post("/register", (req, res) => {
 	// Check for Username:
 	if (!username) {
 		errors.username = "Username is required";
-	} else if (!/^\w{3,}$/.test(username))
+	} else if (!/^[\w\s]{3,}$/.test(username))
 		errors.username = "Invalid Username";
 
 	// Check for Email:
@@ -348,7 +348,7 @@ router.post("/resetPassword", (req, res) => {
 				} else {
 					res.status(401).json({
 						"success": false,
-						"errors": "Reset Token is invalid"
+						"errors": "Provided token is not Reset Token"
 					});
 				}
 			}
@@ -409,7 +409,7 @@ router.post("/verifyEmail", (req, res) => {
 			} else {
 				res.status(401).json({
 					"success": false,
-					"errors": "Verification Token is invalid"
+					"errors": "Provided token is not Verification Token"
 				});
 			}
 		}

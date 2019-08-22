@@ -34,41 +34,59 @@ router.get(
 
 router.post("/login", (req, res) => {
 	const { email, password } = req.body;
+	const errors = {};
 
-	User.findOne({ email: email }).then(user => {
-		if (user) {
-			if (bcrypt.compareSync(password, user.password)) {
+	// Check for Email:
+	if (!/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email))
+		errors.email = "Invalid Email";
 
-				const accessToken = jwt.sign(
-					{
-						sub: user.id,
-						emailVerified: user.emailVerified,
-						type: "access"
-					},
-					process.env.JWT_SECRET,
-					// { expiresIn: '30s' }
-				);
+	// Check for Password:
+	if (password.length < 5 || !/\d/.test(password) || !/A-Z/.test(password))
+		errors.password = "Doesn't meet the required conditions";
 
-				res.status(200).json({
-					"success": true,
-					"data": {
-						user: {
-							email: user.email,
-							username: user.username,
-							organization: user.organization,
-							emailVerified: user.emailVerified
+	// Data is Invalid, respond immediately. (Prevents DB Attacks)
+	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
+		res.status(200).json({
+			"success": false,
+			"errors": errors
+		});
+
+	} else {
+		User.findOne({ email: email }).then(user => {
+			if (user) {
+				if (bcrypt.compareSync(password, user.password)) {
+
+					const accessToken = jwt.sign(
+						{
+							sub: user.id,
+							emailVerified: user.emailVerified,
+							type: "access"
 						},
-					},
-					"token": accessToken
-				});
+						process.env.JWT_SECRET,
+						// { expiresIn: '30s' }
+					);
 
+					res.status(200).json({
+						"success": true,
+						"data": {
+							user: {
+								email: user.email,
+								username: user.username,
+								organization: user.organization,
+								emailVerified: user.emailVerified
+							},
+						},
+						"token": accessToken
+					});
+
+				} else {
+					res.status(400).send("Invalid Password")
+				}
 			} else {
-				res.status(400).send("Invalid Password")
+				res.status(400).send("Cannot find user")
 			}
-		} else {
-			res.status(400).send("Cannot find user")
-		}
-	})
+		})
+	}
 })
 
 router.post("/register", (req, res) => {
@@ -89,7 +107,6 @@ router.post("/register", (req, res) => {
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-		console.log("Inside");
 		res.status(200).json({
 			"success": false,
 			"errors": errors

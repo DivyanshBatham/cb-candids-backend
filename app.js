@@ -61,9 +61,9 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.status(400).json({
+  res.status(404).json({
     "success": false,
-    "errors": [err.message]
+    "errors": err.message
   });
 });
 

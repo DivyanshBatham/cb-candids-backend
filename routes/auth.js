@@ -186,7 +186,7 @@ router.post("/register", (req, res) => {
 								sendVerificationEmail(user)
 									.then(response => {
 										console.log(`>>> Email Verification link sent to: ${user.email}`);
-										res.status(200).json({
+										res.status(201).json({
 											"success": true,
 											"data": {
 												user: {

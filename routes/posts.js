@@ -43,23 +43,18 @@ postsRouter.get("/", jwtAuthCheck, (req, res) => {
         .populate({ path: 'comments.likes', model: User, select: 'username' })
         .then(posts => {
             console.log("Posts => ", posts);
-            if (posts)
-                res.status(200).json({
-                    "success": true,
-                    "data": {
-                        posts: posts,
-                    },
-                });
-            else
-                res.status(200).json({
-                    "success": false,
-                    "errors": ["Unable to fetch Posts"]
-                });
+            res.status(200).json({
+                "success": true,
+                // TODO: Change data reponse to direct data..
+                "data": {
+                    posts: posts,
+                },
+            });
         }).catch(err => {
             console.log(err)
-            res.status(200).json({
+            res.status(500).json({
                 "success": false,
-                "errors": ["Unable to fetch Posts"]
+                "errors": err.message
             });
         })
 });
@@ -78,7 +73,7 @@ postsRouter.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
 
     // Data is Invalid, respond immediately.
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-        res.status(200).json({
+        res.status(400).json({
             "success": false,
             "errors": errors
         });
@@ -95,21 +90,24 @@ postsRouter.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
         })
 
         post.save().then(post => {
-            if (post) {
-                res.status(200).json({
-                    "success": true,
-                    "data": post
-                });
-            } else
-                res.status(200).json({
-                    "success": false,
-                    "errors": ["Unable to create Post"]
-                });
+            // if (post) {
+            res.status(201).json({
+                "success": true,
+                "data": {
+                    post: post,
+                },
+            });
+            // HELP: if check is not needed in .save(), right?
+            // } else
+            //     res.status(200).json({
+            //         "success": false,
+            //         "errors": "Unable to create Post"
+            //     });
         }).catch(err => {
             console.log(err)
-            res.status(200).json({
+            res.status(500).json({
                 "success": false,
-                "errors": ["Unable to create Post"]
+                "errors": err.message
             });
         })
     }
@@ -135,15 +133,15 @@ postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
                     },
                 });
             else
-                res.status(200).json({
+                res.status(404).json({
                     "success": false,
-                    "errors": ["Unable to fetch Post"]
+                    "errors": "Post not Found"
                 });
         }).catch(err => {
             console.log(err)
-            res.status(200).json({
+            res.status(500).json({
                 "success": false,
-                "errors": ["Unable to fetch Post"]
+                "errors": err.message
             });
         })
 });
@@ -162,24 +160,31 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
             fs.unlink("uploads/" + deletedPost.imgSrc, (err) => {
                 if (err) {
                     console.log(err);
+                    // HELP: How should I handle this? 
+                    // Post document is deleted but there was an error deleting the file.
+                    // res.status(500).json({
+                    //     "success": false,
+                    //     "errors": err.message
+                    // });
                 } else {
                     console.log(deletedPost.imgSrc, ' was deleted');
-                    res.status(200).json({
+                    // HELP: Should this be 204? "The server successfully processed the request, but is not returning any content"
+                    res.status(204).json({
                         "success": true,
                     });
                 }
             });
         }
         else
-            res.status(200).json({
+            res.status(404).json({
                 "success": false,
-                "errors": ["Post Not Found"]
+                "errors": "Post Not Found"
             });
     }).catch(err => {
         console.log(err)
-        res.status(200).json({
+        res.status(500).json({
             "success": false,
-            "errors": ["Unable to delete Post"]
+            "errors": err.message
         });
     })
 
@@ -206,7 +211,8 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
 
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
         // Data is Invalid, respond immediately.
-        res.status(200).json({
+        // HELP: Should I send the response after deleting the temporary file? (202 Accepted?)
+        res.status(400).json({
             "success": false,
             "errors": errors,
         });
@@ -231,7 +237,14 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
                         "data": {
                             post: curPost
                         }
+                    }).catch(err => {
+                        console.log(err)
+                        res.status(500).json({
+                            "success": false,
+                            "errors": err.message
+                        });
                     });
+                    // HELP: Should I move the unlink code below res.send ?
                     // If new file was uploaded, delete the old one:
                     if (req.file)
                         fs.unlink("uploads/" + curPath, (err) => {
@@ -242,17 +255,24 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
                         });
                 });
             } else {
-                res.status(200).json({
+                res.status(404).json({
                     "success": false,
-                    "errors": ["No such post found"]
+                    "errors": "Post Not Found"
                 });
             }
-        })
+        }).catch(err => {
+            console.log(err)
+            res.status(500).json({
+                "success": false,
+                "errors": err.message
+            });
+        });
 
     } else {
-        res.status(200).json({
+        // HELP: Is this correct?
+        res.status(204).json({
             "success": false,
-            "errors": ["No changes"]
+            "errors": "No changes"
         });
     }
 
@@ -270,19 +290,19 @@ postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
     ).then(post => {
         console.log("Liked Post => ", post);
         if (post)
-            res.status(200).json({
+            res.status(204).json({
                 "success": true,
             });
         else
-            res.status(200).json({
+            res.status(404).json({
                 "success": false,
-                "errors": ["Unable to like Post"]
+                "errors": "Post Not Found"
             });
     }).catch(err => {
         console.log(err)
-        res.status(200).json({
+        res.status(500).json({
             "success": false,
-            "errors": ["Unable to like Post"]
+            "errors": err.message
         });
     })
 

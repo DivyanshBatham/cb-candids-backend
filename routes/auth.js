@@ -115,7 +115,7 @@ router.post("/register", (req, res) => {
 	// Check for Username:
 	if (!username) {
 		errors.username = "Username is required";
-	} else if (!/^[\w\s]{3,}$/.test(username))
+	} else if (!/^\w{3,}(\s\w+)*$/.test(username))
 		errors.username = "Invalid Username";
 
 	// Check for Email:

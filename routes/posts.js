@@ -169,7 +169,8 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
                 } else {
                     console.log(deletedPost.imgSrc, ' was deleted');
                     // HELP: Should this be 204? "The server successfully processed the request, but is not returning any content"
-                    res.status(204).json({
+                    // If we are using 204, then the body is ignored.
+                    res.status(200).json({
                         "success": true,
                     });
                 }
@@ -270,7 +271,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
 
     } else {
         // HELP: Is this correct?
-        res.status(204).json({
+        res.status(200).json({
             "success": false,
             "errors": "No changes"
         });
@@ -290,7 +291,7 @@ postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
     ).then(post => {
         console.log("Liked Post => ", post);
         if (post)
-            res.status(204).json({
+            res.status(200).json({
                 "success": true,
             });
         else

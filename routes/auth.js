@@ -46,7 +46,7 @@ router.post("/login", (req, res) => {
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-		res.status(200).json({
+		res.status(400).json({
 			"success": false,
 			"errors": errors
 		});
@@ -80,10 +80,20 @@ router.post("/login", (req, res) => {
 					});
 
 				} else {
-					res.status(400).send("Invalid Password")
+					res.status(400).json({
+						"success": false,
+						"errors": {
+							"password": "Invalid Password"
+						}
+					});
 				}
 			} else {
-				res.status(400).send("Cannot find user")
+				res.status(400).json({
+					"success": false,
+					"errors": {
+						"email": "User not found"
+					}
+				});
 			}
 		})
 	}

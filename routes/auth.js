@@ -83,7 +83,7 @@ router.post("/login", (req, res) => {
 					});
 
 				} else {
-					res.status(400).json({
+					res.status(401).json({
 						"success": false,
 						"errors": {
 							"password": "Invalid Password"
@@ -91,7 +91,7 @@ router.post("/login", (req, res) => {
 					});
 				}
 			} else {
-				res.status(400).json({
+				res.status(404).json({
 					"success": false,
 					"errors": {
 						"email": "User not found"
@@ -100,9 +100,9 @@ router.post("/login", (req, res) => {
 			}
 		}).catch(err => {
 			console.err(err);
-			res.status(400).json({
+			res.status(500).json({
 				"success": false,
-				"errors": "User not found"
+				"errors": err.message
 			});
 		})
 	}
@@ -203,7 +203,7 @@ router.post("/register", (req, res) => {
 										console.error(err)
 										res.status(500).json({
 											"success": false,
-											"errors": "Unable to send the email"
+											"errors": err.message
 										});
 									})
 
@@ -220,9 +220,9 @@ router.post("/register", (req, res) => {
 			} // Else
 		}).catch(err => {
 			console.err(err);
-			res.status(400).json({
+			res.status(500).json({
 				"success": false,
-				"errors": "User not found"
+				"errors": err.message
 			});
 		})
 	} // Data Sanitization
@@ -260,11 +260,11 @@ router.post("/forgetPassword", (req, res) => {
 						console.error(err)
 						res.status(500).json({
 							"success": false,
-							"errors": "Unable to send the email"
+							"errors": err.message
 						});
 					})
 			} else {
-				res.status(400).json({
+				res.status(404).json({
 					"success": false,
 					"errors": {
 						"email": "User not found"
@@ -273,9 +273,9 @@ router.post("/forgetPassword", (req, res) => {
 			}
 		}).catch(err => {
 			console.err(err);
-			res.status(400).json({
+			res.status(500).json({
 				"success": false,
-				"errors": "User not found"
+				"errors": err.message
 			});
 		})
 	}
@@ -300,6 +300,7 @@ router.post("/resetPassword", (req, res) => {
 	} else {
 		// Verify Token:
 		jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+			// TODO: Maybe respond with token expired..
 			if (err)
 				res.status(401).json({
 					"success": false,
@@ -314,33 +315,40 @@ router.post("/resetPassword", (req, res) => {
 							User.findByIdAndUpdate(payload.sub, {
 								password: hashedPassword
 							}).then(user => {
-								const accessToken = jwt.sign(
-									{
-										sub: user.id,
-										emailVerified: user.emailVerified,
-										type: "access"
-									},
-									process.env.JWT_SECRET,
-									// { expiresIn: '30s' }
-								);
-
-								res.status(200).json({
-									"success": true,
-									"data": {
-										user: {
-											email: user.email,
-											username: user.username,
-											organization: user.organization,
-											emailVerified: user.emailVerified
+								if (user) {
+									const accessToken = jwt.sign(
+										{
+											sub: user.id,
+											emailVerified: user.emailVerified,
+											type: "access"
 										},
-									},
-									"token": accessToken
-								})
+										process.env.JWT_SECRET,
+										// { expiresIn: '30s' }
+									);
+
+									res.status(200).json({
+										"success": true,
+										"data": {
+											user: {
+												email: user.email,
+												username: user.username,
+												organization: user.organization,
+												emailVerified: user.emailVerified
+											},
+										},
+										"token": accessToken
+									})
+								} else {
+									res.status(404).json({
+										"success": false,
+										"errors": "User not found"
+									});
+								}
 							}).catch(err => {
 								console.err(err);
-								res.status(400).json({
+								res.status(500).json({
 									"success": false,
-									"errors": "User not found"
+									"errors": err.message
 								});
 							})
 						});
@@ -374,34 +382,41 @@ router.post("/verifyEmail", (req, res) => {
 					{ $set: { emailVerified: true } },
 					{ new: true }
 				).then(user => {
+					if (user) {
 
-					const newAccessToken = jwt.sign(
-						{
-							sub: user.id,
-							emailVerified: user.emailVerified,
-							type: "access"
-						},
-						process.env.JWT_SECRET,
-						// { expiresIn: '30s' }
-					);
-
-					res.status(200).json({
-						"success": true,
-						"data": {
-							user: {
-								email: user.email,
-								username: user.username,
-								organization: user.organization,
-								emailVerified: user.emailVerified
+						const newAccessToken = jwt.sign(
+							{
+								sub: user.id,
+								emailVerified: user.emailVerified,
+								type: "access"
 							},
-						},
-						"token": newAccessToken
-					})
+							process.env.JWT_SECRET,
+							// { expiresIn: '30s' }
+						);
+
+						res.status(200).json({
+							"success": true,
+							"data": {
+								user: {
+									email: user.email,
+									username: user.username,
+									organization: user.organization,
+									emailVerified: user.emailVerified
+								},
+							},
+							"token": newAccessToken
+						})
+					} else {
+						res.status(404).json({
+							"success": false,
+							"errors": "User not found"
+						});
+					}
 				}).catch(err => {
 					console.err(err);
-					res.status(400).json({
+					res.status(500).json({
 						"success": false,
-						"errors": "User not found"
+						"errors": err.message
 					});
 				})
 

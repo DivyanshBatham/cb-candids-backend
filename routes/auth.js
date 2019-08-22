@@ -98,6 +98,12 @@ router.post("/login", (req, res) => {
 					}
 				});
 			}
+		}).catch(err => {
+			console.err(err);
+			res.status(400).json({
+				"success": false,
+				"errors": "User not found"
+			});
 		})
 	}
 })
@@ -212,7 +218,13 @@ router.post("/register", (req, res) => {
 
 					}); // Bcrypt
 			} // Else
-		}) // Duplication Check
+		}).catch(err => {
+			console.err(err);
+			res.status(400).json({
+				"success": false,
+				"errors": "User not found"
+			});
+		})
 	} // Data Sanitization
 })
 
@@ -259,6 +271,12 @@ router.post("/forgetPassword", (req, res) => {
 					}
 				});
 			}
+		}).catch(err => {
+			console.err(err);
+			res.status(400).json({
+				"success": false,
+				"errors": "User not found"
+			});
 		})
 	}
 })

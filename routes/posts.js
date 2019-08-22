@@ -6,9 +6,8 @@ const fs = require('fs');
 const Post = require('../models/post');
 const User = require('../models/user');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
-const router = express.Router();
-
-// TODO: Make a separate router for Comments.
+const postsRouter = express.Router();
+const commentsRouter = require('./comments');
 
 const storage = multer.diskStorage({
     // where the file should be saved:
@@ -34,8 +33,8 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
-// Fetch all the Posts:
-router.get("/", jwtAuthCheck, (req, res) => {
+// Fetch all Posts:
+postsRouter.get("/", jwtAuthCheck, (req, res) => {
     Post.find()
         .populate({ path: 'author', model: User, select: ['username', 'email'] })
         .populate({ path: 'likes', model: User, select: 'username' })
@@ -44,29 +43,25 @@ router.get("/", jwtAuthCheck, (req, res) => {
         .populate({ path: 'comments.likes', model: User, select: 'username' })
         .then(posts => {
             console.log("Posts => ", posts);
-            if (posts)
-                res.status(200).json({
-                    "success": true,
-                    "data": {
-                        posts: posts,
-                    },
-                });
-            else
-                res.status(200).json({
-                    "success": false,
-                    "errors": ["Unable to fetch Posts"]
-                });
+            res.status(200).json({
+                "success": true,
+                // TODO: Change data reponse to direct data..
+                "data": {
+                    posts: posts,
+                },
+            });
         }).catch(err => {
             console.log(err)
-            res.status(200).json({
+            res.status(500).json({
                 "success": false,
-                "errors": ["Unable to fetch Posts"]
+                "errors": err.message
             });
         })
 });
 
-// Create a new Post:
-router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
+
+// Create Post:
+postsRouter.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
     const { title, description = null, taggedUsers = "[]" } = req.body;
     const errors = {};
 
@@ -78,7 +73,7 @@ router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
 
     // Data is Invalid, respond immediately.
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-        res.status(200).json({
+        res.status(400).json({
             "success": false,
             "errors": errors
         });
@@ -95,57 +90,109 @@ router.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
         })
 
         post.save().then(post => {
-            if (post) {
-                res.status(200).json({
-                    "success": true,
-                    "data": post
-                });
-            } else
-                res.status(200).json({
-                    "success": false,
-                    "errors": ["Unable to create Post"]
-                });
+            // if (post) {
+            res.status(201).json({
+                "success": true,
+                "data": {
+                    post: post,
+                },
+            });
+            // HELP: if check is not needed in .save(), right?
+            // } else
+            //     res.status(200).json({
+            //         "success": false,
+            //         "errors": "Unable to create Post"
+            //     });
         }).catch(err => {
             console.log(err)
-            res.status(200).json({
+            res.status(500).json({
                 "success": false,
-                "errors": ["Unable to create Post"]
+                "errors": err.message
             });
         })
     }
 });
 
-
-// Delete a Post:
-router.delete("/:postId", jwtAuthCheck, (req, res) => {
+// Fetch specific Post:
+postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
-    // TODO: Delete the image
+
+    Post.findById(postId)
+        .populate({ path: 'author', model: User, select: ['username', 'email'] })
+        .populate({ path: 'likes', model: User, select: 'username' })
+        .populate({ path: 'taggedUsers', model: User, select: 'username' })
+        .populate({ path: 'comments.author', model: User, select: 'username' })
+        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .then(post => {
+            console.log(post);
+            if (post)
+                res.status(200).json({
+                    "success": true,
+                    "data": {
+                        post: post,
+                    },
+                });
+            else
+                res.status(404).json({
+                    "success": false,
+                    "errors": "Post not Found"
+                });
+        }).catch(err => {
+            console.log(err)
+            res.status(500).json({
+                "success": false,
+                "errors": err.message
+            });
+        })
+});
+
+
+// Delete Post:
+postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
+    const { postId } = req.params;
+
     Post.findOneAndDelete({
         _id: postId,
         author: req.userId
-    }).then(post => {
-        console.log("Deleted Post => ", post);
-        if (post)
-            res.status(200).json({
-                "success": true,
+    }).then(deletedPost => {
+        if (deletedPost) {
+            // Delete the uploaded image:
+            fs.unlink("uploads/" + deletedPost.imgSrc, (err) => {
+                if (err) {
+                    console.log(err);
+                    // HELP: How should I handle this? 
+                    // Post document is deleted but there was an error deleting the file.
+                    // res.status(500).json({
+                    //     "success": false,
+                    //     "errors": err.message
+                    // });
+                } else {
+                    console.log(deletedPost.imgSrc, ' was deleted');
+                    // HELP: Should this be 204? "The server successfully processed the request, but is not returning any content"
+                    // If we are using 204, then the body is ignored.
+                    res.status(200).json({
+                        "success": true,
+                    });
+                }
             });
+        }
         else
-            res.status(200).json({
+            res.status(404).json({
                 "success": false,
-                "errors": ["Unable to delete Post, id and author.id mismatch"]
+                "errors": "Post Not Found"
             });
     }).catch(err => {
         console.log(err)
-        res.status(200).json({
+        res.status(500).json({
             "success": false,
-            "errors": ["Unable to delete Post"]
+            "errors": err.message
         });
     })
 
 });
 
 // TODO: Edit a Post: 
-router.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
+postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
     const { postId } = req.params;
     const { title, description, taggedUsers } = req.body;
     const changes = {}, errors = {};
@@ -165,7 +212,8 @@ router.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
 
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
         // Data is Invalid, respond immediately.
-        res.status(200).json({
+        // HELP: Should I send the response after deleting the temporary file? (202 Accepted?)
+        res.status(400).json({
             "success": false,
             "errors": errors,
         });
@@ -190,26 +238,42 @@ router.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
                         "data": {
                             post: curPost
                         }
+                    }).catch(err => {
+                        console.log(err)
+                        res.status(500).json({
+                            "success": false,
+                            "errors": err.message
+                        });
                     });
+                    // HELP: Should I move the unlink code below res.send ?
                     // If new file was uploaded, delete the old one:
                     if (req.file)
                         fs.unlink("uploads/" + curPath, (err) => {
-                            if (err) throw err;
-                            console.log(curPath, ' was deleted');
+                            if (err)
+                                console.log(err);
+                            else
+                                console.log(curPath, ' was deleted');
                         });
                 });
             } else {
-                res.status(200).json({
+                res.status(404).json({
                     "success": false,
-                    "errors": ["No such post found"]
+                    "errors": "Post Not Found"
                 });
             }
-        })
+        }).catch(err => {
+            console.log(err)
+            res.status(500).json({
+                "success": false,
+                "errors": err.message
+            });
+        });
 
     } else {
+        // HELP: Is this correct?
         res.status(200).json({
             "success": false,
-            "errors": ["No changes"]
+            "errors": "No changes"
         });
     }
 
@@ -217,7 +281,7 @@ router.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
 
 
 // Like a Post
-router.post("/:postId/likes", jwtAuthCheck, (req, res) => {
+postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
 
     Post.findByIdAndUpdate(
@@ -231,198 +295,20 @@ router.post("/:postId/likes", jwtAuthCheck, (req, res) => {
                 "success": true,
             });
         else
-            res.status(200).json({
+            res.status(404).json({
                 "success": false,
-                "errors": ["Unable to like Post"]
+                "errors": "Post Not Found"
             });
     }).catch(err => {
         console.log(err)
-        res.status(200).json({
+        res.status(500).json({
             "success": false,
-            "errors": ["Unable to like Post"]
+            "errors": err.message
         });
     })
 
 });
 
-// Comment a Post
-router.post("/:postId/comments", jwtAuthCheck, (req, res) => {
-    const { postId } = req.params;
-    const { comment } = req.body;
+postsRouter.use("/:postId/comments", commentsRouter);
 
-    // TODO: Validate comment.
-
-    Post.findByIdAndUpdate(
-        postId,
-        {
-            $push: {
-                comments: {
-                    comment: comment,
-                    author: req.userId,
-                    likes: [],
-                }
-            }
-        },
-        { new: true }
-    ).then(post => {
-        console.log("Commented on Post => ", post);
-        if (post)
-            res.status(200).json({
-                "success": true,
-                "data": post
-            });
-        else
-            res.status(200).json({
-                "success": false,
-                "errors": ["Post not Found"]
-            });
-    }).catch(err => {
-        console.log(err)
-        res.status(200).json({
-            "success": false,
-            "errors": ["Post not Found"]
-        });
-    })
-
-});
-
-// Like a comment
-// TODO: Should I change this to :commentId/likes?
-router.post("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
-    const { postId, commentId } = req.params;
-
-    Post.findById(postId).then(post => {
-        let commentFound = false;
-        for (let comment of post.comments) {
-            if (comment.id === commentId) {
-                if (!comment.likes.includes(req.userId)) {
-                    comment.likes.push(req.userId);
-                    commentFound = true;
-                    break;
-                }
-            }
-        }
-        if (commentFound) {
-            post.save().then(post => {
-                res.status(200).json({
-                    "success": true,
-                    "data": post
-                });
-            }).catch(err => {
-                console.log(err)
-                res.status(200).json({
-                    "success": false,
-                    "errors": ["Unable to Like Comment"]
-                });
-            });
-        } else {
-            res.status(200).json({
-                "success": false,
-                "errors": ["Comment Not Found"]
-            });
-        }
-
-    }).catch(err => {
-        console.log(err)
-        res.status(200).json({
-            "success": false,
-            "errors": ["Post not Found"]
-        });
-    });
-});
-
-// Delete a comment
-router.delete("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
-    const { postId, commentId } = req.params;
-
-    Post.findById(postId).then(post => {
-        post.comments = post.comments.filter(comment => comment.id !== commentId);
-        post.save().then(post => {
-            res.status(200).json({
-                "success": true,
-                "data": post
-            });
-        }).catch(err => {
-            console.log(err)
-            res.status(200).json({
-                "success": false,
-                "errors": ["Unable to delete Comment"]
-            });
-        });
-    }).catch(err => {
-        console.log(err)
-        res.status(200).json({
-            "success": false,
-            "errors": ["Post not Found"]
-        });
-    });
-
-});
-
-// Edit a comment
-router.patch("/:postId/comments/:commentId", jwtAuthCheck, (req, res) => {
-    const { postId, commentId } = req.params;
-    const { newComment } = req.body;
-
-    const changes = {}, errors = {};
-
-    if (newComment !== undefined) {
-        if (newComment === "")
-            errors.comment = "Comment cannot be Empty";
-        else
-            changes.comment = newComment;
-    }
-
-    if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-        // Data is Invalid, respond immediately.
-        res.status(200).json({
-            "success": false,
-            "errors": errors,
-        });
-    } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {
-        Post.findById(postId).then(post => {
-            let commentFound = false;
-            for (let commentObj of post.comments) {
-                if (commentObj.id === commentId) {
-                    commentObj.comment = newComment;
-                    commentFound = true;
-                    break;
-                }
-            }
-            if (commentFound) {
-                post.save().then(post => {
-                    res.status(200).json({
-                        "success": true,
-                        "data": post
-                    });
-                }).catch(err => {
-                    console.log(err)
-                    res.status(200).json({
-                        "success": false,
-                        "errors": ["Unable to edit Comment"]
-                    });
-                });
-            } else {
-                res.status(200).json({
-                    "success": false,
-                    "errors": ["Comment not Found"]
-                });
-            }
-        }).catch(err => {
-            console.log(err)
-            res.status(200).json({
-                "success": false,
-                "errors": ["Post not Found"]
-            });
-        });
-    } else {
-        res.status(200).json({
-            "success": false,
-            "errors": ["No changes"]
-        });
-    }
-
-});
-
-
-module.exports = router;
+module.exports = postsRouter;

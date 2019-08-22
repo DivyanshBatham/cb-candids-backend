@@ -8,23 +8,33 @@ const jwtAuthCheck = (req, res, next) => {
 
         jwt.verify(bearerToken, process.env.JWT_SECRET, (err, payload) => {
             if (err)
-                res.status(403).json({
-                    "success": false
+                res.status(401).json({
+                    "success": false,
+                    "errors": "Access Token is invalid"
                 });
             else {
                 if (payload.type === 'access') {
-                    req.userId = payload.sub;
+                     if (!payload.emailVerified) {
+                        res.status(403).json({
+                            "success": false,
+                            "errors": "Email not verified"
+                        });
+                    } else {
+                        req.userId = payload.sub;
+                    }
                     next();
                 } else {
                     res.status(403).json({
-                        "success": false
+                        "success": false,
+                        "errors": "Provided token is not Access Token"
                     });
                 }
             }
         })
     } else {
-        res.status(403).json({
-            "success": false
+        res.status(401).json({
+            "success": false,
+            "errors": "Access Token is required"
         });
     }
 }

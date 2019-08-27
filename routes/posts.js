@@ -61,48 +61,48 @@ postsRouter.get("/", jwtAuthCheck, (req, res) => {
 
 
 // Create Post:
-postsRouter.post("/", jwtAuthCheck, upload.single('img'), (req, res) => {
-    const { title, description = null, taggedUsers = "[]" } = req.body;
+// TODO: Edit package.json to add "mkdir uploads" to the scripts
+postsRouter.post("/", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
+    const { title, description = "", taggedUsers = "[]" } = req.body;
     const errors = {};
+    let taggedUsersArray;
 
     // Validation for empty data:
-    if (title === undefined)
-        errors.title = "Title cannot be Empty";
-    if (req.file === undefined)
+    if (!title)
+        errors.title = "Title is required";
+    if (!req.file)
         errors.file = "Image is required";
+    try {
+        taggedUsersArray = JSON.parse(taggedUsers.length === 0 ? "[]" : taggedUsers);
+    } catch (err) {
+        errors.taggedUsers = err.message
+    };
 
     // Data is Invalid, respond immediately.
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-        res.status(400).json({
+        res.status(422).json({
             "success": false,
             "errors": errors
         });
     } else {
-        const post = new Post({
+        const newPost = new Post({
             _id: new mongoose.Types.ObjectId(),
             title: title,
             description: description,
-            taggedUsers: JSON.parse(taggedUsers),
+            taggedUsers: taggedUsersArray,
             imgSrc: req.file.filename,
             author: req.userId,
             likes: [],
             comments: []
         })
 
-        post.save().then(post => {
-            // if (post) {
+        newPost.save().then(post => {
             res.status(201).json({
                 "success": true,
                 "data": {
                     post: post,
                 },
             });
-            // HELP: if check is not needed in .save(), right?
-            // } else
-            //     res.status(200).json({
-            //         "success": false,
-            //         "errors": "Unable to create Post"
-            //     });
         }).catch(err => {
             console.log(err)
             res.status(500).json({
@@ -148,6 +148,7 @@ postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
 
 
 // Delete Post:
+// TODO: Make sure only author can delete.
 postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
 
@@ -160,6 +161,10 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
             fs.unlink("uploads/" + deletedPost.imgSrc, (err) => {
                 if (err) {
                     console.log(err);
+                    // Error deleting the file, so revert the document deletion:
+                    // deletedPost.save().then(recoveredPost => console.log("recoveredPost ", recoveredPost))
+                    // .catch(err => console.log(err));
+                    // TODO: Make this atomic operation
                     // HELP: How should I handle this? 
                     // Post document is deleted but there was an error deleting the file.
                     // res.status(500).json({
@@ -191,29 +196,44 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
 
 });
 
-// TODO: Edit a Post: 
-postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => {
+// TODO: Make sure only author can edit.
+// HELP NEEDED: Should I ask for all the parameters even if their values are not changed?
+// HELP: Send all data or just updates?
+postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
     const { postId } = req.params;
     const { title, description, taggedUsers } = req.body;
     const changes = {}, errors = {};
 
-    if (title !== undefined) {
-        if (title === "")
-            errors.title = "Title cannot be Empty";
-        else
-            changes.title = title;
-    }
     if (description !== undefined)
         changes.description = description;
-    if (taggedUsers)
-        changes.taggedUsers = JSON.parse(taggedUsers);
-    if (req.file)
-        changes.imgSrc = req.file.filename;
+
+    if (title !== undefined)
+        if (title !== "")
+            changes.title = title;
+        else
+            errors.title = "Title is required";
+
+    if (req.file !== undefined)
+        changes.imgSrc = req.file;
+
+    if (taggedUsers !== undefined) {
+        try {
+            // changes.taggedUsers = JSON.parse(taggedUsers.length === 0 ? "[]" : taggedUsers);
+            changes.taggedUsers = JSON.parse(taggedUsers);
+        } catch (err) {
+            errors.taggedUsers = err.message
+        };
+    }
+
+    console.table({
+        changes: !(Object.entries(changes).length === 0 && changes.constructor === Object),
+        errors: !(Object.entries(errors).length === 0 && errors.constructor === Object)
+    });
 
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
         // Data is Invalid, respond immediately.
         // HELP: Should I send the response after deleting the temporary file? (202 Accepted?)
-        res.status(400).json({
+        res.status(422).json({
             "success": false,
             "errors": errors,
         });
@@ -222,7 +242,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
         if (req.file)
             fs.unlink(req.file.path, (err) => {
                 if (err) console.log("Error deleting the file: ", err);
-                console.log(curPath, ' was deleted');
+                console.log(req.file.path, ' was deleted');
             });
 
     } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {
@@ -238,14 +258,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
                         "data": {
                             post: curPost
                         }
-                    }).catch(err => {
-                        console.log(err)
-                        res.status(500).json({
-                            "success": false,
-                            "errors": err.message
-                        });
-                    });
-                    // HELP: Should I move the unlink code below res.send ?
+                    })
                     // If new file was uploaded, delete the old one:
                     if (req.file)
                         fs.unlink("uploads/" + curPath, (err) => {
@@ -254,6 +267,13 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
                             else
                                 console.log(curPath, ' was deleted');
                         });
+
+                }).catch(err => {
+                    console.log(err)
+                    res.status(500).json({
+                        "success": false,
+                        "errors": err.message
+                    });
                 });
             } else {
                 res.status(404).json({
@@ -268,10 +288,9 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
                 "errors": err.message
             });
         });
-
     } else {
-        // HELP: Is this correct?
-        res.status(200).json({
+        // HELP: Should I just remove the body?
+        res.status(304).json({
             "success": false,
             "errors": "No changes"
         });
@@ -281,6 +300,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('img'), (req, res) => 
 
 
 // Like a Post
+// TODO: Add ability to reset.
 postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
 

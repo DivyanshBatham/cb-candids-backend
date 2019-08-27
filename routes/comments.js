@@ -16,12 +16,12 @@ commentsRouter.post("/", jwtAuthCheck, (req, res) => {
     comment = comment.replace(/^(\s*)/, '').replace(/(\s*)$/, '');
     // Now Check for Comment:
     if (!comment) {
-        errors.comment = "Comment cannot be Empty";
+        errors.comment = "Comment is required";
     }
 
     // Data is Invalid, respond immediately. (Prevents DB Attacks)
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-        res.status(400).json({
+        res.status(422).json({
             "success": false,
             "errors": errors
         });
@@ -114,6 +114,7 @@ commentsRouter.post("/:commentId/likes", jwtAuthCheck, (req, res) => {
 });
 
 // Delete Comment:
+// TODO: Make sure only author can delete.
 commentsRouter.delete("/:commentId", jwtAuthCheck, (req, res) => {
     const { postId, commentId } = req.params;
 
@@ -156,6 +157,7 @@ commentsRouter.delete("/:commentId", jwtAuthCheck, (req, res) => {
 });
 
 // Edit Comment:
+// TODO: Make sure only author can edit.
 commentsRouter.patch("/:commentId", jwtAuthCheck, (req, res) => {
     const { postId, commentId } = req.params;
     let { comment = "" } = req.body;
@@ -166,12 +168,12 @@ commentsRouter.patch("/:commentId", jwtAuthCheck, (req, res) => {
     comment = comment.replace(/^(\s*)/, '').replace(/(\s*)$/, '');
     // Now Check for Comment:
     if (!comment) {
-        errors.comment = "Comment cannot be Empty";
+        errors.comment = "Comment is required";
     } 
 
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
         // Data is Invalid, respond immediately.
-        res.status(400).json({
+        res.status(422).json({
             "success": false,
             "errors": errors,
         });

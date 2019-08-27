@@ -49,7 +49,7 @@ router.post("/login", (req, res) => {
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-		res.status(400).json({
+		res.status(422).json({
 			"success": false,
 			"errors": errors
 		});
@@ -132,7 +132,7 @@ router.post("/register", (req, res) => {
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-		res.status(400).json({
+		res.status(422).json({
 			"success": false,
 			"errors": errors
 		});
@@ -241,7 +241,7 @@ router.post("/forgetPassword", (req, res) => {
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-		res.status(400).json({
+		res.status(422).json({
 			"success": false,
 			"errors": errors
 		});
@@ -292,7 +292,7 @@ router.post("/resetPassword", (req, res) => {
 
 	// Data is Invalid, respond immediately. (Prevents DB Attacks)
 	if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
-		res.status(400).json({
+		res.status(422).json({
 			"success": false,
 			"errors": errors
 		});

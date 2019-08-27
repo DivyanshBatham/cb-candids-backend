@@ -6,7 +6,7 @@ const Post = require('../models/post.js')
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 
 // Fetch all Users (DEBUGGING ONLY)
-userRouter.get("/", jwtAuthCheck, (req, res) => {
+userRouter.get("/", (req, res) => {
   User.find().then(users => {
     console.log("Users => ", users);
     res.status(200).json({

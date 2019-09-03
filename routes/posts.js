@@ -59,6 +59,14 @@ postsRouter.post("/", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
             "success": false,
             "errors": errors
         });
+
+        // Errors found, no need to keep the file:
+        if (req.file)
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.log("Error deleting the file: ", err);
+                else console.log(req.file.path, ' was deleted');
+            });
+
     } else {
         const newPost = new Post({
             _id: new mongoose.Types.ObjectId(),
@@ -217,7 +225,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
         if (req.file)
             fs.unlink(req.file.path, (err) => {
                 if (err) console.log("Error deleting the file: ", err);
-                console.log(req.file.path, ' was deleted');
+                else console.log(req.file.path, ' was deleted');
             });
 
     } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {

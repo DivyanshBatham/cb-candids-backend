@@ -13,7 +13,7 @@ commentsRouter.post("/", jwtAuthCheck, (req, res) => {
 
     // Data Validations:
     // Removing Trailing & Leading Spaces:
-    comment = comment.replace(/^(\s*)/, '').replace(/(\s*)$/, '');
+    comment = comment.trim();
     // Now Check for Comment:
     if (!comment) {
         errors.comment = "Comment is required";

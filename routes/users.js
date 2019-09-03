@@ -3,12 +3,12 @@ const userRouter = express.Router();
 const mongoose = require('mongoose');
 const User = require('../models/user.js')
 const Post = require('../models/post.js')
+const upload = require('../helpers/multer');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 
 // Fetch all Users (DEBUGGING ONLY)
 userRouter.get("/", (req, res) => {
   User.find().then(users => {
-    console.log("Users => ", users);
     res.status(200).json({
       "success": true,
       "data": {
@@ -67,6 +67,75 @@ userRouter.get("/:userName", jwtAuthCheck, (req, res) => {
       "errors": err.message
     });
   })
+});
+
+userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) => {
+  const { username, bio } = req.body;
+  const changes = {}, errors = {};
+
+  if (username !== undefined)
+    if (/^\w{3,}(\s\w+)*$/.test(username))
+      changes.username = username;
+    else
+      errors.username = "Invalid Username";
+
+  if (bio !== undefined)
+    changes.bio = bio.trim();
+
+  if (req.file !== undefined)
+    changes.imgSrc = req.file.filename;
+
+  if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
+    // Data is Invalid, respond immediately.
+    res.status(422).json({
+      "success": false,
+      "errors": errors,
+    });
+
+    // Errors found, no need to keep the file:
+    if (req.file)
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.log("Error deleting the file: ", err);
+        else console.log(req.file.path, ' was deleted');
+      });
+
+  } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {
+
+    // HELP: This works but what is username wasn't passed?
+    // If changes in Username:
+    if (changes.username) {
+      // Checking for duplication:
+      const user = await User.findOne({ 'username': changes.username });
+      if (user && user.id !== req.userId) {
+        errors.username = "Username already exists";
+        return res.status(409).json({
+          "success": false,
+          "errors": errors
+        });
+      }
+    }
+
+    User.findByIdAndUpdate(req.userId, changes, { new: true }).then(user => {
+      res.status(200).json({
+        "success": true,
+        "data": user
+      });
+    }).catch(err => {
+      console.log(err)
+      res.status(500).json({
+        "success": false,
+        "errors": err.message
+      });
+    });
+
+  } else {
+    // HELP: Should I just remove the body?
+    res.status(304).json({
+      "success": false,
+      "errors": "No changes"
+    });
+  }
+
 });
 
 

@@ -1,37 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
 const Post = require('../models/post');
 const User = require('../models/user');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const postsRouter = express.Router();
 const commentsRouter = require('./comments');
-
-const storage = multer.diskStorage({
-    // where the file should be saved:
-    destination: function (req, file, cb) {
-        cb(null, './uploads');
-    },
-    // how the file should be named:
-    filename: function (req, file, cb) {
-        cb(null, (new Date().getTime()) + path.extname(file.originalname))
-    },
-});
-
-const fileFilter = (req, file, cb) => {
-    if (/\.(jpg|jpeg|png|gif)$/.test(file.originalname))
-        cb(null, true);
-    else
-        cb(new Error("Unsupported File Type"), false); // Ignores file, we can throw error.
-}
-
-const upload = multer({
-    storage: storage,
-    fileSize: 1024 * 1024 * 5, // 5 MB
-    fileFilter: fileFilter
-});
+const upload = require('../helpers/multer');
 
 // Fetch all Posts:
 postsRouter.get("/", jwtAuthCheck, (req, res) => {
@@ -84,6 +59,14 @@ postsRouter.post("/", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
             "success": false,
             "errors": errors
         });
+
+        // Errors found, no need to keep the file:
+        if (req.file)
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.log("Error deleting the file: ", err);
+                else console.log(req.file.path, ' was deleted');
+            });
+
     } else {
         const newPost = new Post({
             _id: new mongoose.Types.ObjectId(),
@@ -214,7 +197,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
             errors.title = "Title is required";
 
     if (req.file !== undefined)
-        changes.imgSrc = req.file;
+        changes.imgSrc = req.file.filename;
 
     if (taggedUsers !== undefined) {
         try {
@@ -242,7 +225,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
         if (req.file)
             fs.unlink(req.file.path, (err) => {
                 if (err) console.log("Error deleting the file: ", err);
-                console.log(req.file.path, ' was deleted');
+                else console.log(req.file.path, ' was deleted');
             });
 
     } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {

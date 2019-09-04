@@ -285,25 +285,30 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
 // Like a Post
 postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
-
     Post.findById(postId).then(post => {
         if (post) {
+            let message;
             const likeIndex = post.likes.indexOf(req.userId);
-            if (likeIndex === -1)
+            if (likeIndex === -1) {
+                message = "liked";
                 post.likes.push(req.userId);
-            else
+            }
+            else{
+                message = "unliked";
                 post.likes.splice(likeIndex, 1);
-
+            }
+                
             post.save().then(updatedPost => {
                 res.status(200).json({
                     "success": true,
+                    "message": message
                 });
             })
         }
         else
             res.status(404).json({
                 "success": false,
-                "errors": "Post Not Found"
+                "errors": "Post Not Found",
             });
     }).catch(err => {
         console.log(err)

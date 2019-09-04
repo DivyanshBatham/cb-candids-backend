@@ -283,20 +283,23 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
 
 
 // Like a Post
-// TODO: Add ability to reset.
 postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
 
-    Post.findByIdAndUpdate(
-        postId,
-        { $addToSet: { likes: req.userId } },
-        { new: true }
-    ).then(post => {
-        console.log("Liked Post => ", post);
-        if (post)
-            res.status(200).json({
-                "success": true,
-            });
+    Post.findById(postId).then(post => {
+        if (post) {
+            const likeIndex = post.likes.indexOf(req.userId);
+            if (likeIndex === -1)
+                post.likes.push(req.userId);
+            else
+                post.likes.splice(likeIndex, 1);
+
+            post.save().then(updatedPost => {
+                res.status(200).json({
+                    "success": true,
+                });
+            })
+        }
         else
             res.status(404).json({
                 "success": false,

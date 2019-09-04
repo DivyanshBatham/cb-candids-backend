@@ -71,11 +71,18 @@ commentsRouter.post("/:commentId/likes", jwtAuthCheck, (req, res) => {
             let commentFound = false;
             for (let comment of post.comments) {
                 if (comment.id === commentId) {
-                    if (!comment.likes.includes(req.userId)) {
+                    const likeIndex = comment.likes.indexOf(req.userId);
+                    if (likeIndex === -1)
                         comment.likes.push(req.userId);
-                        commentFound = true;
-                        break;
-                    }
+                    else
+                        comment.likes.splice(likeIndex, 1);
+                    commentFound = true;
+                    break;
+                    // if (!comment.likes.includes(req.userId)) {
+                    //     comment.likes.push(req.userId);
+                    //     commentFound = true;
+                    //     break;
+                    // }
                 }
             }
             if (commentFound) {
@@ -169,7 +176,7 @@ commentsRouter.patch("/:commentId", jwtAuthCheck, (req, res) => {
     // Now Check for Comment:
     if (!comment) {
         errors.comment = "Comment is required";
-    } 
+    }
 
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
         // Data is Invalid, respond immediately.

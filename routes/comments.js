@@ -68,14 +68,19 @@ commentsRouter.post("/:commentId/likes", jwtAuthCheck, (req, res) => {
 
     Post.findById(postId).then(post => {
         if (post) {
+            let message;
             let commentFound = false;
             for (let comment of post.comments) {
                 if (comment.id === commentId) {
                     const likeIndex = comment.likes.indexOf(req.userId);
-                    if (likeIndex === -1)
+                    if (likeIndex === -1) {
+                        message = "liked";
                         comment.likes.push(req.userId);
-                    else
+                    }
+                    else {
+                        message = "unliked";
                         comment.likes.splice(likeIndex, 1);
+                    }
                     commentFound = true;
                     break;
                     // if (!comment.likes.includes(req.userId)) {
@@ -90,7 +95,8 @@ commentsRouter.post("/:commentId/likes", jwtAuthCheck, (req, res) => {
                     // HELP: Should I be sending the updated post or not?
                     res.status(200).json({
                         "success": true,
-                        "data": post
+                        "data": post,
+                        "message": message
                     });
                 }).catch(err => {
                     console.log(err)

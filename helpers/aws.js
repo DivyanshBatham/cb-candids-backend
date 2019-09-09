@@ -9,13 +9,16 @@ s3 = new AWS.S3({ apiVersion: '2006-03-01' });
 
 var uploadParams = { Bucket: "cb-candids", Key: '', Body: '' };
 
-exports.s3Upload = (folder, file) => {
+exports.s3Upload = (folder, file, key) => {
     var fileStream = fs.createReadStream(file);
     fileStream.on('error', function (err) {
         console.log('File Error', err);
     });
     uploadParams.Body = fileStream;
-    uploadParams.Key = folder + path.basename(file);
+    if (key)
+        uploadParams.Key = folder + key;
+    else
+        uploadParams.Key = folder + path.basename(file);
 
     // call S3 to retrieve upload file to specified bucket
     return new Promise((resolve, reject) => {

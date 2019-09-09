@@ -12,11 +12,11 @@ const aws = require('../helpers/aws');
 // Fetch all Posts:
 postsRouter.get("/", jwtAuthCheck, (req, res) => {
     Post.find()
-        .populate({ path: 'author', model: User, select: ['username', 'email'] })
-        .populate({ path: 'likes', model: User, select: 'username' })
-        .populate({ path: 'taggedUsers', model: User, select: 'username' })
-        .populate({ path: 'comments.author', model: User, select: 'username' })
-        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
         .then(posts => {
             console.log("Posts => ", posts);
             res.status(200).json({
@@ -111,11 +111,11 @@ postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
 
     Post.findById(postId)
-        .populate({ path: 'author', model: User, select: ['username', 'email'] })
-        .populate({ path: 'likes', model: User, select: 'username' })
-        .populate({ path: 'taggedUsers', model: User, select: 'username' })
-        .populate({ path: 'comments.author', model: User, select: 'username' })
-        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
         .then(post => {
             console.log(post);
             if (post)

@@ -7,6 +7,7 @@ const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const postsRouter = express.Router();
 const commentsRouter = require('./comments');
 const upload = require('../helpers/multer');
+const aws = require('../helpers/aws');
 
 // Fetch all Posts:
 postsRouter.get("/", jwtAuthCheck, (req, res) => {
@@ -34,9 +35,7 @@ postsRouter.get("/", jwtAuthCheck, (req, res) => {
         })
 });
 
-
 // Create Post:
-// TODO: Edit package.json to add "mkdir uploads" to the scripts
 postsRouter.post("/", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
     const { title, description = "", taggedUsers = "[]" } = req.body;
     const errors = {};
@@ -68,25 +67,36 @@ postsRouter.post("/", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
             });
 
     } else {
-        const newPost = new Post({
-            _id: new mongoose.Types.ObjectId(),
-            title: title,
-            description: description,
-            taggedUsers: taggedUsersArray,
-            imgSrc: req.file.filename,
-            author: req.userId,
-            likes: [],
-            comments: []
-        })
+        // Upload file to S3:
+        aws.s3Upload("posts/", req.file.path).then(location => {
+            const newPost = new Post({
+                _id: new mongoose.Types.ObjectId(),
+                title: title,
+                description: description,
+                taggedUsers: taggedUsersArray,
+                imgSrc: location,
+                author: req.userId,
+                likes: [],
+                comments: []
+            })
 
-        newPost.save().then(post => {
-            res.status(201).json({
-                "success": true,
-                "data": {
-                    post: post,
-                },
-            });
+            newPost.save().then(post => {
+                res.status(201).json({
+                    "success": true,
+                    "data": {
+                        post: post,
+                    },
+                });
+            }).catch(err => {
+                console.log(err)
+                res.status(500).json({
+                    "success": false,
+                    "errors": err.message
+                });
+            })
+
         }).catch(err => {
+            // TODO: Possibly retry to upload.
             console.log(err)
             res.status(500).json({
                 "success": false,
@@ -293,11 +303,11 @@ postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
                 message = "liked";
                 post.likes.push(req.userId);
             }
-            else{
+            else {
                 message = "unliked";
                 post.likes.splice(likeIndex, 1);
             }
-                
+
             post.save().then(updatedPost => {
                 res.status(200).json({
                     "success": true,

@@ -190,9 +190,7 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
 });
 
 // TODO: Make sure only author can edit.
-// HELP NEEDED: Should I ask for all the parameters even if their values are not changed?
-// HELP: Send all data or just updates?
-postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
+postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), async (req, res) => {
     const { postId } = req.params;
     const { title, description, taggedUsers } = req.body;
     const changes = {}, errors = {};
@@ -207,7 +205,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
             errors.title = "Title is required";
 
     if (req.file !== undefined)
-        changes.imgSrc = req.file.filename;
+        changes.imgSrc = req.file.path;
 
     if (taggedUsers !== undefined) {
         try {
@@ -217,11 +215,6 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
             errors.taggedUsers = err.message
         };
     }
-
-    console.table({
-        changes: !(Object.entries(changes).length === 0 && changes.constructor === Object),
-        errors: !(Object.entries(errors).length === 0 && errors.constructor === Object)
-    });
 
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
         // Data is Invalid, respond immediately.
@@ -239,10 +232,24 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
             });
 
     } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {
+        // TODO: Will this get into, Cannot set headers after...
+        if (changes.imgSrc) {
+            // Upload to S3:
+            try {
+                const location = await aws.s3Upload("posts/", changes.imgSrc);
+                changes.imgSrc = location;
+            } catch (err) {
+                console.log(err)
+                return res.status(500).json({
+                    "success": false,
+                    "errors": err.message
+                });
+            }
+        }
         // Changes found, update the post:
         Post.findById(postId).then(curPost => {
             if (curPost) {
-                const curPath = curPost.imgSrc;
+                const curKey = curPost.imgSrc.replace("https://cb-candids.s3.ap-south-1.amazonaws.com/", "");
                 Object.assign(curPost, changes);
                 curPost.save().then(updatedPost => {
                     console.log("Updated Post =>", updatedPost);
@@ -253,13 +260,10 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
                         }
                     })
                     // If new file was uploaded, delete the old one:
-                    if (req.file)
-                        fs.unlink("uploads/" + curPath, (err) => {
-                            if (err)
-                                console.log(err);
-                            else
-                                console.log(curPath, ' was deleted');
-                        });
+                    if (req.file) {
+                        // Deleting from AWS:
+                        aws.s3DeleteObject(curKey);
+                    }
 
                 }).catch(err => {
                     console.log(err)

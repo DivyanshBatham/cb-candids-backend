@@ -150,29 +150,29 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
         author: req.userId
     }).then(deletedPost => {
         if (deletedPost) {
-            // Delete the uploaded image:
-            fs.unlink("uploads/" + deletedPost.imgSrc, (err) => {
-                if (err) {
-                    console.log(err);
-                    // Error deleting the file, so revert the document deletion:
-                    // deletedPost.save().then(recoveredPost => console.log("recoveredPost ", recoveredPost))
-                    // .catch(err => console.log(err));
-                    // TODO: Make this atomic operation
-                    // HELP: How should I handle this? 
-                    // Post document is deleted but there was an error deleting the file.
-                    // res.status(500).json({
-                    //     "success": false,
-                    //     "errors": err.message
-                    // });
-                } else {
-                    console.log(deletedPost.imgSrc, ' was deleted');
-                    // HELP: Should this be 204? "The server successfully processed the request, but is not returning any content"
-                    // If we are using 204, then the body is ignored.
-                    res.status(200).json({
-                        "success": true,
-                    });
-                }
-            });
+            const curKey = deletedPost.imgSrc.replace("https://cb-candids.s3.ap-south-1.amazonaws.com/", "");
+            aws.s3DeleteObject(curKey).then(data => {
+                console.log(deletedPost.imgSrc, ' was deleted');
+                res.status(200).json({
+                    "success": true,
+                });
+            }).catch(err => {
+                console.log(err)
+                // TODO: Make this atomic operation
+                // Error deleting the file, so revert the document deletion:
+                // deletedPost.save().then(recoveredPost => console.log("recoveredPost ", recoveredPost))
+                // .catch(err => console.log(err));
+                // HELP: How should I handle this? 
+                // Post document is deleted but there was an error deleting the file.
+                // res.status(500).json({
+                //     "success": false,
+                //     "errors": err.message
+                // });
+                res.status(500).json({
+                    "success": false,
+                    "errors": err.message
+                });
+            })
         }
         else
             res.status(404).json({

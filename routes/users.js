@@ -119,6 +119,11 @@ userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) =>
     if (changes.imgSrc) {
       // Upload to S3:
       try {
+        // HELP: Should we be deleting the uploaded files?
+        // IF NOT: like tech gaints:
+        // const location = await aws.s3Upload("users/", changes.imgSrc);
+        // ELSE:
+        // TODO: Append file extension.
         const location = await aws.s3Upload("users/", changes.imgSrc, req.userId);
         changes.imgSrc = location;
       } catch (err) {

@@ -4,6 +4,7 @@ const fs = require('fs');
 const Post = require('../models/post');
 const User = require('../models/user');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
+const authorizationCheck = require('../helpers/authorizationCheck');
 const postsRouter = express.Router();
 const commentsRouter = require('./comments');
 const upload = require('../helpers/multer');
@@ -18,7 +19,6 @@ postsRouter.get("/", jwtAuthCheck, (req, res) => {
         .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
         .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
         .then(posts => {
-            console.log("Posts => ", posts);
             res.status(200).json({
                 "success": true,
                 // TODO: Change data reponse to direct data..
@@ -141,8 +141,7 @@ postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
 
 
 // Delete Post:
-// TODO: Make sure only author can delete.
-postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
+postsRouter.delete("/:postId", jwtAuthCheck, authorizationCheck, (req, res) => {
     const { postId } = req.params;
 
     Post.findOneAndDelete({
@@ -189,8 +188,8 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
 
 });
 
-// TODO: Make sure only author can edit.
-postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), async (req, res) => {
+// Edit Post:
+postsRouter.patch("/:postId", jwtAuthCheck, authorizationCheck, upload.single('imgSrc'), async (req, res) => {
     const { postId } = req.params;
     const { title, description, taggedUsers } = req.body;
     const changes = {}, errors = {};

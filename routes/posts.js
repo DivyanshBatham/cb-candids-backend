@@ -4,20 +4,21 @@ const fs = require('fs');
 const Post = require('../models/post');
 const User = require('../models/user');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
+const authorizationCheck = require('../helpers/authorizationCheck');
 const postsRouter = express.Router();
 const commentsRouter = require('./comments');
 const upload = require('../helpers/multer');
+const aws = require('../helpers/aws');
 
 // Fetch all Posts:
 postsRouter.get("/", jwtAuthCheck, (req, res) => {
     Post.find()
-        .populate({ path: 'author', model: User, select: ['username', 'email'] })
-        .populate({ path: 'likes', model: User, select: 'username' })
-        .populate({ path: 'taggedUsers', model: User, select: 'username' })
-        .populate({ path: 'comments.author', model: User, select: 'username' })
-        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
         .then(posts => {
-            console.log("Posts => ", posts);
             res.status(200).json({
                 "success": true,
                 // TODO: Change data reponse to direct data..
@@ -34,9 +35,7 @@ postsRouter.get("/", jwtAuthCheck, (req, res) => {
         })
 });
 
-
 // Create Post:
-// TODO: Edit package.json to add "mkdir uploads" to the scripts
 postsRouter.post("/", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
     const { title, description = "", taggedUsers = "[]" } = req.body;
     const errors = {};
@@ -68,25 +67,36 @@ postsRouter.post("/", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
             });
 
     } else {
-        const newPost = new Post({
-            _id: new mongoose.Types.ObjectId(),
-            title: title,
-            description: description,
-            taggedUsers: taggedUsersArray,
-            imgSrc: req.file.filename,
-            author: req.userId,
-            likes: [],
-            comments: []
-        })
+        // Upload file to S3:
+        aws.s3Upload("posts/", req.file.path).then(location => {
+            const newPost = new Post({
+                _id: new mongoose.Types.ObjectId(),
+                title: title,
+                description: description,
+                taggedUsers: taggedUsersArray,
+                imgSrc: location,
+                author: req.userId,
+                likes: [],
+                comments: []
+            })
 
-        newPost.save().then(post => {
-            res.status(201).json({
-                "success": true,
-                "data": {
-                    post: post,
-                },
-            });
+            newPost.save().then(post => {
+                res.status(201).json({
+                    "success": true,
+                    "data": {
+                        post: post,
+                    },
+                });
+            }).catch(err => {
+                console.log(err)
+                res.status(500).json({
+                    "success": false,
+                    "errors": err.message
+                });
+            })
+
         }).catch(err => {
+            // TODO: Possibly retry to upload.
             console.log(err)
             res.status(500).json({
                 "success": false,
@@ -101,11 +111,11 @@ postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
     const { postId } = req.params;
 
     Post.findById(postId)
-        .populate({ path: 'author', model: User, select: ['username', 'email'] })
-        .populate({ path: 'likes', model: User, select: 'username' })
-        .populate({ path: 'taggedUsers', model: User, select: 'username' })
-        .populate({ path: 'comments.author', model: User, select: 'username' })
-        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
         .then(post => {
             console.log(post);
             if (post)
@@ -131,8 +141,7 @@ postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
 
 
 // Delete Post:
-// TODO: Make sure only author can delete.
-postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
+postsRouter.delete("/:postId", jwtAuthCheck, authorizationCheck, (req, res) => {
     const { postId } = req.params;
 
     Post.findOneAndDelete({
@@ -140,29 +149,29 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
         author: req.userId
     }).then(deletedPost => {
         if (deletedPost) {
-            // Delete the uploaded image:
-            fs.unlink("uploads/" + deletedPost.imgSrc, (err) => {
-                if (err) {
-                    console.log(err);
-                    // Error deleting the file, so revert the document deletion:
-                    // deletedPost.save().then(recoveredPost => console.log("recoveredPost ", recoveredPost))
-                    // .catch(err => console.log(err));
-                    // TODO: Make this atomic operation
-                    // HELP: How should I handle this? 
-                    // Post document is deleted but there was an error deleting the file.
-                    // res.status(500).json({
-                    //     "success": false,
-                    //     "errors": err.message
-                    // });
-                } else {
-                    console.log(deletedPost.imgSrc, ' was deleted');
-                    // HELP: Should this be 204? "The server successfully processed the request, but is not returning any content"
-                    // If we are using 204, then the body is ignored.
-                    res.status(200).json({
-                        "success": true,
-                    });
-                }
-            });
+            const curKey = deletedPost.imgSrc.replace("https://cb-candids.s3.ap-south-1.amazonaws.com/", "");
+            aws.s3DeleteObject(curKey).then(data => {
+                console.log(deletedPost.imgSrc, ' was deleted');
+                res.status(200).json({
+                    "success": true,
+                });
+            }).catch(err => {
+                console.log(err)
+                // TODO: Make this atomic operation
+                // Error deleting the file, so revert the document deletion:
+                // deletedPost.save().then(recoveredPost => console.log("recoveredPost ", recoveredPost))
+                // .catch(err => console.log(err));
+                // HELP: How should I handle this? 
+                // Post document is deleted but there was an error deleting the file.
+                // res.status(500).json({
+                //     "success": false,
+                //     "errors": err.message
+                // });
+                res.status(500).json({
+                    "success": false,
+                    "errors": err.message
+                });
+            })
         }
         else
             res.status(404).json({
@@ -179,10 +188,8 @@ postsRouter.delete("/:postId", jwtAuthCheck, (req, res) => {
 
 });
 
-// TODO: Make sure only author can edit.
-// HELP NEEDED: Should I ask for all the parameters even if their values are not changed?
-// HELP: Send all data or just updates?
-postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) => {
+// Edit Post:
+postsRouter.patch("/:postId", jwtAuthCheck, authorizationCheck, upload.single('imgSrc'), async (req, res) => {
     const { postId } = req.params;
     const { title, description, taggedUsers } = req.body;
     const changes = {}, errors = {};
@@ -197,7 +204,7 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
             errors.title = "Title is required";
 
     if (req.file !== undefined)
-        changes.imgSrc = req.file.filename;
+        changes.imgSrc = req.file.path;
 
     if (taggedUsers !== undefined) {
         try {
@@ -207,11 +214,6 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
             errors.taggedUsers = err.message
         };
     }
-
-    console.table({
-        changes: !(Object.entries(changes).length === 0 && changes.constructor === Object),
-        errors: !(Object.entries(errors).length === 0 && errors.constructor === Object)
-    });
 
     if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
         // Data is Invalid, respond immediately.
@@ -229,10 +231,24 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
             });
 
     } else if (!(Object.entries(changes).length === 0 && changes.constructor === Object)) {
+        // TODO: Will this get into, Cannot set headers after...
+        if (changes.imgSrc) {
+            // Upload to S3:
+            try {
+                const location = await aws.s3Upload("posts/", changes.imgSrc);
+                changes.imgSrc = location;
+            } catch (err) {
+                console.log(err)
+                return res.status(500).json({
+                    "success": false,
+                    "errors": err.message
+                });
+            }
+        }
         // Changes found, update the post:
         Post.findById(postId).then(curPost => {
             if (curPost) {
-                const curPath = curPost.imgSrc;
+                const curKey = curPost.imgSrc.replace("https://cb-candids.s3.ap-south-1.amazonaws.com/", "");
                 Object.assign(curPost, changes);
                 curPost.save().then(updatedPost => {
                     console.log("Updated Post =>", updatedPost);
@@ -243,13 +259,10 @@ postsRouter.patch("/:postId", jwtAuthCheck, upload.single('imgSrc'), (req, res) 
                         }
                     })
                     // If new file was uploaded, delete the old one:
-                    if (req.file)
-                        fs.unlink("uploads/" + curPath, (err) => {
-                            if (err)
-                                console.log(err);
-                            else
-                                console.log(curPath, ' was deleted');
-                        });
+                    if (req.file) {
+                        // Deleting from AWS:
+                        aws.s3DeleteObject(curKey);
+                    }
 
                 }).catch(err => {
                     console.log(err)
@@ -293,11 +306,11 @@ postsRouter.post("/:postId/likes", jwtAuthCheck, (req, res) => {
                 message = "liked";
                 post.likes.push(req.userId);
             }
-            else{
+            else {
                 message = "unliked";
                 post.likes.splice(likeIndex, 1);
             }
-                
+
             post.save().then(updatedPost => {
                 res.status(200).json({
                     "success": true,

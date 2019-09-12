@@ -5,6 +5,7 @@ const User = require('../models/user.js')
 const Post = require('../models/post.js')
 const upload = require('../helpers/multer');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
+const aws = require('../helpers/aws');
 
 // Fetch all Users (DEBUGGING ONLY)
 userRouter.get("/", (req, res) => {
@@ -83,7 +84,7 @@ userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) =>
     changes.bio = bio.trim();
 
   if (req.file !== undefined)
-    changes.imgSrc = req.file.filename;
+    changes.imgSrc = req.file.path;
 
   if (!(Object.entries(errors).length === 0 && errors.constructor === Object)) {
     // Data is Invalid, respond immediately.
@@ -111,6 +112,25 @@ userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) =>
         return res.status(409).json({
           "success": false,
           "errors": errors
+        });
+      }
+    }
+
+    if (changes.imgSrc) {
+      // Upload to S3:
+      try {
+        // HELP: Should we be deleting the uploaded files?
+        // IF NOT: like tech gaints:
+        // const location = await aws.s3Upload("users/", changes.imgSrc);
+        // ELSE:
+        // TODO: Append file extension.
+        const location = await aws.s3Upload("users/", changes.imgSrc, req.userId);
+        changes.imgSrc = location;
+      } catch (err) {
+        console.log(err)
+        res.status(500).json({
+          "success": false,
+          "errors": err.message
         });
       }
     }

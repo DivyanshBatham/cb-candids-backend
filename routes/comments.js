@@ -1,6 +1,7 @@
 const express = require('express');
 const Post = require('../models/post');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
+const authorizationCheck = require('../helpers/authorizationCheck');
 const commentsRouter = express.Router({ mergeParams: true });
 
 
@@ -127,8 +128,7 @@ commentsRouter.post("/:commentId/likes", jwtAuthCheck, (req, res) => {
 });
 
 // Delete Comment:
-// TODO: Make sure only author can delete.
-commentsRouter.delete("/:commentId", jwtAuthCheck, (req, res) => {
+commentsRouter.delete("/:commentId", jwtAuthCheck, authorizationCheck, (req, res) => {
     const { postId, commentId } = req.params;
 
     Post.findById(postId).then(post => {
@@ -170,8 +170,7 @@ commentsRouter.delete("/:commentId", jwtAuthCheck, (req, res) => {
 });
 
 // Edit Comment:
-// TODO: Make sure only author can edit.
-commentsRouter.patch("/:commentId", jwtAuthCheck, (req, res) => {
+commentsRouter.patch("/:commentId", jwtAuthCheck, authorizationCheck, (req, res) => {
     const { postId, commentId } = req.params;
     let { comment = "" } = req.body;
 

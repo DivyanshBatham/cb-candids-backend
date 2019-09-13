@@ -118,24 +118,21 @@ userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) =>
     }
 
     if (changes.imgSrc) {
-      // Upload to S3:
-      // TODO: Upload smaller images also (Target them to ~10KB )
       try {
-        // Try to manipulate image:
-        // TODO: Should I be limiting file types based on Jimp? 
-        // Or should I simply save un processed files if Jimp cannot process it?
+        // Compressing Image:
         let processedImageLarge = `./uploads/processed/${req.userId}-large.png`;
         let processedImage = `./uploads/processed/${req.userId}.png`;
-
+        
         const image = await Jimp.read(changes.imgSrc);
         image.cover(256, 256)
-          .quality(100)
-          .write(processedImageLarge);
-
+        .quality(100)
+        .write(processedImageLarge);
+        
         image.cover(48, 48)
-          .quality(100)
-          .write(processedImage);
-
+        .quality(100)
+        .write(processedImage);
+        
+        // Uploading to S3:
         const locationLarge = await aws.s3Upload("users/", processedImageLarge);
         const location = await aws.s3Upload("users/", processedImage);
         changes.imgSrcLarge = locationLarge;

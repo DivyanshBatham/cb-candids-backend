@@ -33,11 +33,11 @@ userRouter.get("/:userName", jwtAuthCheck, (req, res) => {
   User.findOne({ username: userName }).then(user => {
     if (user) {
       Post.find({ author: user.id })
-        .populate({ path: 'author', model: User, select: ['username', 'email'] })
-        .populate({ path: 'likes', model: User, select: 'username' })
-        .populate({ path: 'taggedUsers', model: User, select: 'username' })
-        .populate({ path: 'comments.author', model: User, select: 'username' })
-        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
         .then(posts => {
           res.status(200).json({
             "success": true,

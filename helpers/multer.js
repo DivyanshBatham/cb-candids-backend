@@ -13,7 +13,8 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-    if (/\.(jpg|jpeg|png|gif)$/.test(file.originalname))
+    // These are the file types that Jimp supports:
+    if (/\.(jpg|jpeg|png|gif|bmp|tiff)$/.test(file.originalname))
         cb(null, true);
     else
         cb(new Error("Unsupported File Type"), false); // Ignores file, we can throw error.

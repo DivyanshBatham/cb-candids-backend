@@ -6,6 +6,7 @@ const Post = require('../models/post.js')
 const upload = require('../helpers/multer');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const aws = require('../helpers/aws');
+var Jimp = require('jimp');
 
 // Fetch all Users (DEBUGGING ONLY)
 userRouter.get("/", (req, res) => {
@@ -118,17 +119,23 @@ userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) =>
 
     if (changes.imgSrc) {
       // Upload to S3:
+      // TODO: Upload smaller images also (Target them to ~10KB )
       try {
-        // HELP: Should we be deleting the uploaded files?
-        // IF NOT: like tech gaints:
-        // const location = await aws.s3Upload("users/", changes.imgSrc);
-        // ELSE:
-        // TODO: Append file extension.
-        const location = await aws.s3Upload("users/", changes.imgSrc, req.userId);
+        // Try to manipulate image:
+        // TODO: Should I be limiting file types based on Jimp? 
+        // Or should I simply save un processed files if Jimp cannot process it?
+        let processedFilePath = `./uploads/processed/${req.userId}.png`;
+
+        const image = await Jimp.read(changes.imgSrc);
+        image.cover(256, 256)
+          .quality(100)
+          .write(processedFilePath);
+
+        const location = await aws.s3Upload("users/", processedFilePath);
         changes.imgSrc = location;
       } catch (err) {
         console.log(err)
-        res.status(500).json({
+        return res.status(500).json({
           "success": false,
           "errors": err.message
         });

@@ -7,6 +7,7 @@ const userSchema = mongoose.Schema({
     password: { type: String, required: true },
     emailVerified: { type: Boolean, required: true },
     organization: { type: String, default: 'CodeBrahma' },
+    imgSrcLarge: { type: String, default: '/images/userPlaceholder.png' },
     imgSrc: { type: String, default: '/images/userPlaceholder.png' },
     bio: { type: String, default: '' },
     // TODO: Change the imgSrc of placeholder to cloudURL

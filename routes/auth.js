@@ -76,7 +76,9 @@ router.post("/login", (req, res) => {
 								email: user.email,
 								username: user.username,
 								organization: user.organization,
-								emailVerified: user.emailVerified
+								emailVerified: user.emailVerified,
+								imgSrc: user.imgSrc,
+								imgSrcLarge: user.imgSrcLarge
 							},
 						},
 						"token": accessToken
@@ -167,7 +169,7 @@ router.post("/register", (req, res) => {
 							password: hashedPassword,
 							// TODO: When Scaling remove this:
 							// organization: organization,
-							emailVerified: false
+							emailVerified: false,
 						})
 
 						newUser.save()
@@ -193,7 +195,9 @@ router.post("/register", (req, res) => {
 													email: user.email,
 													username: user.username,
 													organization: user.organization,
-													emailVerified: user.emailVerified
+													emailVerified: user.emailVerified,
+													imgSrc: user.imgSrc,
+													imgSrcLarge: user.imgSrcLarge
 												},
 											},
 											"token": accessToken
@@ -333,7 +337,9 @@ router.post("/resetPassword", (req, res) => {
 												email: user.email,
 												username: user.username,
 												organization: user.organization,
-												emailVerified: user.emailVerified
+												emailVerified: user.emailVerified,
+												imgSrc: user.imgSrc,
+												imgSrcLarge: user.imgSrcLarge
 											},
 										},
 										"token": accessToken
@@ -401,7 +407,9 @@ router.post("/verifyEmail", (req, res) => {
 									email: user.email,
 									username: user.username,
 									organization: user.organization,
-									emailVerified: user.emailVerified
+									emailVerified: user.emailVerified,
+									imgSrc: user.imgSrc,
+									imgSrcLarge: user.imgSrcLarge
 								},
 							},
 							"token": newAccessToken

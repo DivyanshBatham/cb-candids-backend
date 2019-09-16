@@ -287,6 +287,7 @@ router.post("/forgetPassword", (req, res) => {
 
 router.post("/resetPassword", (req, res) => {
 	const { password, token } = req.body;
+	const errors = {};
 
 	// Check for Password:
 	if (!password) {
@@ -357,7 +358,13 @@ router.post("/resetPassword", (req, res) => {
 									"errors": err.message
 								});
 							})
-						});
+						}).catch(err => {
+							console.err(err);
+							res.status(500).json({
+								"success": false,
+								"errors": err.message
+							});
+						})
 
 				} else {
 					res.status(401).json({

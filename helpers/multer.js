@@ -12,17 +12,24 @@ const storage = multer.diskStorage({
     },
 });
 
+const limits = {
+    files: 1, // Allow only 1 file per request
+    fileSize: 1024 * 1024 * 10, // 10 MB (max file size)
+};
+
 const fileFilter = (req, file, cb) => {
-    if (/\.(jpg|jpeg|png|gif)$/.test(file.originalname))
+    // These are the file types that Jimp supports:
+    if (/\.(jpg|jpeg|png|gif|bmp|tiff)$/.test(file.originalname))
         cb(null, true);
     else
         cb(new Error("Unsupported File Type"), false); // Ignores file, we can throw error.
 }
 
+
 const upload = multer({
-    storage: storage,
-    fileSize: 1024 * 1024 * 5, // 5 MB
-    fileFilter: fileFilter
+    storage,
+    limits,
+    fileFilter
 });
 
 module.exports = upload

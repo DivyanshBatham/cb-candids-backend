@@ -6,6 +6,7 @@ const Post = require('../models/post.js')
 const upload = require('../helpers/multer');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const aws = require('../helpers/aws');
+var Jimp = require('jimp');
 
 // Fetch all Users (DEBUGGING ONLY)
 userRouter.get("/", (req, res) => {
@@ -32,11 +33,11 @@ userRouter.get("/:userName", jwtAuthCheck, (req, res) => {
   User.findOne({ username: userName }).then(user => {
     if (user) {
       Post.find({ author: user.id })
-        .populate({ path: 'author', model: User, select: ['username', 'email'] })
-        .populate({ path: 'likes', model: User, select: 'username' })
-        .populate({ path: 'taggedUsers', model: User, select: 'username' })
-        .populate({ path: 'comments.author', model: User, select: 'username' })
-        .populate({ path: 'comments.likes', model: User, select: 'username' })
+        .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+        .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
         .then(posts => {
           res.status(200).json({
             "success": true,
@@ -117,18 +118,28 @@ userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) =>
     }
 
     if (changes.imgSrc) {
-      // Upload to S3:
       try {
-        // HELP: Should we be deleting the uploaded files?
-        // IF NOT: like tech gaints:
-        // const location = await aws.s3Upload("users/", changes.imgSrc);
-        // ELSE:
-        // TODO: Append file extension.
-        const location = await aws.s3Upload("users/", changes.imgSrc, req.userId);
+        // Compressing Image:
+        let processedImageLarge = `./uploads/processed/${req.userId}-large.png`;
+        let processedImage = `./uploads/processed/${req.userId}.png`;
+        
+        const image = await Jimp.read(changes.imgSrc);
+        image.cover(256, 256)
+        .quality(100)
+        .write(processedImageLarge);
+        
+        image.cover(48, 48)
+        .quality(100)
+        .write(processedImage);
+        
+        // Uploading to S3:
+        const locationLarge = await aws.s3Upload("users/", processedImageLarge);
+        const location = await aws.s3Upload("users/", processedImage);
+        changes.imgSrcLarge = locationLarge;
         changes.imgSrc = location;
       } catch (err) {
         console.log(err)
-        res.status(500).json({
+        return res.status(500).json({
           "success": false,
           "errors": err.message
         });

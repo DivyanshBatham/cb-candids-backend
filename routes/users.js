@@ -4,9 +4,11 @@ const mongoose = require('mongoose');
 const User = require('../models/user.js')
 const Post = require('../models/post.js')
 const upload = require('../helpers/multer');
+const randomColor = require('../helpers/RandomColor');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const aws = require('../helpers/aws');
 var Jimp = require('jimp');
+
 
 // Fetch all Users (DEBUGGING ONLY)
 userRouter.get("/", (req, res) => {
@@ -25,6 +27,41 @@ userRouter.get("/", (req, res) => {
     });
   })
 });
+
+
+// Fetch Users Options:
+userRouter.get("/options", (req, res) => {
+  const { search = '' } = req.query;
+  User.find(
+    { username: { $regex: new RegExp(`${search}`, 'i') } },
+    null,
+    {
+      sort: {
+        username: 'asc' // Alphabetically
+      },
+      limit: 5
+    })
+    .collation({ locale: "en" })
+    .then(users => {
+      res.status(200).json({
+        "success": true,
+        "data": {
+          options: users.map(user => ({
+            value: user.id,
+            label: user.username,
+            color: randomColor.getColorGuaranteed()
+          })),
+        },
+      });
+    }).catch(err => {
+      console.log(err)
+      res.status(500).json({
+        "success": false,
+        "errors": err.message
+      });
+    })
+});
+
 
 // Fetch specific User:
 userRouter.get("/:userName", jwtAuthCheck, (req, res) => {
@@ -71,6 +108,8 @@ userRouter.get("/:userName", jwtAuthCheck, (req, res) => {
   })
 });
 
+
+// Edit User:
 userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) => {
   const { username, bio } = req.body;
   const changes = {}, errors = {};
@@ -122,16 +161,16 @@ userRouter.patch("/", jwtAuthCheck, upload.single('imgSrc'), async (req, res) =>
         // Compressing Image:
         let processedImageLarge = `./uploads/processed/${req.userId}-large.png`;
         let processedImage = `./uploads/processed/${req.userId}.png`;
-        
+
         const image = await Jimp.read(changes.imgSrc);
         image.cover(256, 256)
-        .quality(100)
-        .write(processedImageLarge);
-        
+          .quality(100)
+          .write(processedImageLarge);
+
         image.cover(48, 48)
-        .quality(100)
-        .write(processedImage);
-        
+          .quality(100)
+          .write(processedImage);
+
         // Uploading to S3:
         const locationLarge = await aws.s3Upload("users/", processedImageLarge);
         const location = await aws.s3Upload("users/", processedImage);

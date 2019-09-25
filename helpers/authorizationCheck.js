@@ -2,7 +2,7 @@ const Post = require('../models/post');
 
 const authorizationCheck = (req, res, next) => {
     const { postId, commentId } = req.params;
-
+    
     if (postId) {
         Post.findById(postId).then(post => {
             if (post) {
@@ -11,7 +11,7 @@ const authorizationCheck = (req, res, next) => {
                     let commentIndex = post.comments.findIndex(comment => comment.id === commentId);
 
                     if (commentIndex !== -1) {
-                        if (post.comments[commentIndex].author !== req.userId)
+                        if ((post.comments[commentIndex].author).toString() !== req.userId)
                             return res.status(403).json({
                                 "success": false,
                                 "errors": "Request Forbidden"
@@ -24,7 +24,7 @@ const authorizationCheck = (req, res, next) => {
                         });
                     }
                 }
-                else if (post.author !== req.userId) {
+                else if ((post.author).toString() !== req.userId) {
                     // Edit / Delete Post:
                     return res.status(403).json({
                         "success": false,

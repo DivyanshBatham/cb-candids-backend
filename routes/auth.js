@@ -55,7 +55,7 @@ router.post("/login", (req, res) => {
 		});
 
 	} else {
-		User.findOne({ email: email }).then(user => {
+		User.findOne({ email: email }).select('+password').then(user => {
 			if (user) {
 				if (bcrypt.compareSync(password, user.password)) {
 

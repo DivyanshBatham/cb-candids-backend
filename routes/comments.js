@@ -1,5 +1,6 @@
 const express = require('express');
 const Post = require('../models/post');
+const User = require('../models/user');
 const jwtAuthCheck = require('../helpers/jwtAuthCheck');
 const authorizationCheck = require('../helpers/authorizationCheck');
 const commentsRouter = express.Router({ mergeParams: true });
@@ -40,25 +41,35 @@ commentsRouter.post("/", jwtAuthCheck, (req, res) => {
                 }
             },
             { new: true }
-        ).then(post => {
-            console.log("Commented on Post => ", post);
-            if (post)
-                res.status(201).json({
-                    "success": true,
-                    "data": post
-                });
-            else
-                res.status(404).json({
+        )
+            .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+            .lean() // Returns a plain `post` JS Object instead of Mongoose Object
+            .then(post => {
+                if (post) {
+                    res.status(201).json({
+                        "success": true,
+                        "data": {
+                            ...post,
+                            comments: post.comments.map(comment => ({
+                                ...comment,
+                                isAuthor: comment.author._id.toString() === req.userId
+                            })),
+                            isLiked: post.likes.findIndex( like => like._id.toString() === req.userId ) !== -1
+                        }
+                    });
+                }
+                else
+                    res.status(404).json({
+                        "success": false,
+                        "errors": "Post not Found"
+                    });
+            }).catch(err => {
+                console.log(err)
+                res.status(500).json({
                     "success": false,
-                    "errors": "Post not Found"
+                    "errors": err.message
                 });
-        }).catch(err => {
-            console.log(err)
-            res.status(500).json({
-                "success": false,
-                "errors": err.message
-            });
-        })
+            })
     }
 
 });

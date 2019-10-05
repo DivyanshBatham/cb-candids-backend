@@ -18,12 +18,20 @@ postsRouter.get("/", jwtAuthCheck, (req, res) => {
         .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
         .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
         .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
-        .then(posts => {
+        .lean().then(posts => {
             res.status(200).json({
                 "success": true,
-                // TODO: Change data reponse to direct data..
                 "data": {
-                    posts: posts,
+                    posts: posts.map(post => {
+                        return {
+                            ...post,
+                            comments: post.comments.map(comment => ({
+                                ...comment,
+                                isAuthor: comment.author._id.toString() === req.userId
+                            })),
+                            isLiked: post.likes.findIndex(like => like._id.toString() === req.userId) !== -1
+                        }
+                    }),
                 },
             });
         }).catch(err => {
@@ -116,14 +124,21 @@ postsRouter.get("/:postId", jwtAuthCheck, (req, res) => {
         .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
         .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
         .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
-        .then(post => {
+        .lean().then(post => {
             console.log(post);
             if (post)
                 res.status(200).json({
                     "success": true,
                     "data": {
-                        post: post,
-                    },
+                        post: {
+                            ...post,
+                            comments: post.comments.map(comment => ({
+                                ...comment,
+                                isAuthor: comment.author._id.toString() === req.userId
+                            })),
+                            isLiked: post.likes.findIndex(like => like._id.toString() === req.userId) !== -1
+                        }
+                    }
                 });
             else
                 res.status(404).json({

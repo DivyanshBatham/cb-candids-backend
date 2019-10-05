@@ -1,8 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const fs = require('fs');
-const Post = require('../models/post');
-const User = require('../models/user');
+const { User, Post } = require('../models');
 const { jwtAuthCheck, authorizationCheck } = require('./middlewares');
 const postsRouter = express.Router();
 const commentsRouter = require('./comments');

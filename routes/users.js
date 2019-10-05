@@ -1,8 +1,7 @@
 const express = require('express');
 const userRouter = express.Router();
 const mongoose = require('mongoose');
-const User = require('../models/user.js')
-const Post = require('../models/post.js')
+const { User, Post } = require('../models');
 const upload = require('../helpers/multer');
 const randomColor = require('../helpers/RandomColor');
 const { jwtAuthCheck } = require('./middlewares');

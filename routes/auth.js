@@ -5,8 +5,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { User } = require('../models');
-const sendVerificationEmail = require('../helpers/sendVerificationEmail');
-const sendForgetPasswordEmail = require('../helpers/sendForgetPasswordEmail');
+const { sendVerificationEmail, sendForgetPasswordEmail } = require('../helpers');
 
 /* GET Google Authentication API. */
 router.get(

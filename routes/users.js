@@ -1,12 +1,10 @@
 const express = require('express');
-const userRouter = express.Router();
 const mongoose = require('mongoose');
+const Jimp = require('jimp');
 const { User, Post } = require('../models');
-const upload = require('../helpers/multer');
-const randomColor = require('../helpers/RandomColor');
+const { aws, upload, randomColor } = require('../helpers');
 const { jwtAuthCheck } = require('./middlewares');
-const aws = require('../helpers/aws');
-var Jimp = require('jimp');
+const userRouter = express.Router();
 
 
 // Fetch all Users (DEBUGGING ONLY)

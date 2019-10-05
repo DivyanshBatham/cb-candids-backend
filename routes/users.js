@@ -5,7 +5,7 @@ const User = require('../models/user.js')
 const Post = require('../models/post.js')
 const upload = require('../helpers/multer');
 const randomColor = require('../helpers/RandomColor');
-const jwtAuthCheck = require('./middlewares/jwtAuthCheck');
+const { jwtAuthCheck } = require('./middlewares');
 const aws = require('../helpers/aws');
 var Jimp = require('jimp');
 

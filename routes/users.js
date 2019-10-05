@@ -30,7 +30,7 @@ userRouter.get("/", (req, res) => {
 
 
 // Fetch Users Options:
-userRouter.get("/options", (req, res) => {
+userRouter.get("/options", jwtAuthCheck, (req, res) => {
   const { search = '' } = req.query;
   User.find(
     { username: { $regex: new RegExp(`${search}`, 'i') } },

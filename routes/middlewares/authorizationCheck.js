@@ -1,4 +1,4 @@
-const Post = require('../models/post');
+const Post = require('../../models/post');
 
 const authorizationCheck = (req, res, next) => {
     const { postId, commentId } = req.params;

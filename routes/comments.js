@@ -1,8 +1,8 @@
 const express = require('express');
 const Post = require('../models/post');
 const User = require('../models/user');
-const jwtAuthCheck = require('../helpers/jwtAuthCheck');
-const authorizationCheck = require('../helpers/authorizationCheck');
+const jwtAuthCheck = require('./middlewares/jwtAuthCheck');
+const authorizationCheck = require('./middlewares/authorizationCheck');
 const commentsRouter = express.Router({ mergeParams: true });
 
 

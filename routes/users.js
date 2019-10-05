@@ -68,44 +68,44 @@ userRouter.get("/:userName", jwtAuthCheck, (req, res) => {
   const { userName } = req.params;
 
   User.findOne({ username: userName }).then(user => {
-    if (user) {
-      Post.find({ author: user.id })
-        .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
-        .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
-        .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
-        .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
-        .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
-        .then(posts => {
-          res.status(200).json({
-            "success": true,
-            "data": {
-              user: user,
-              postCount: posts.length,
-              likeCount: posts.reduce((count, post) => count + post.likes.length, 0),
-              posts: posts,
-            },
-          });
-        }).catch(err => {
-          console.log(err)
-          res.status(500).json({
-            "success": false,
-            "errors": err.message
-          });
-        })
+      if (user) {
+        Post.find({ author: user.id })
+          .populate({ path: 'author', model: User, select: ['username', 'imgSrc'] })
+          .populate({ path: 'likes', model: User, select: ['username', 'imgSrc'] })
+          .populate({ path: 'taggedUsers', model: User, select: ['username', 'imgSrc'] })
+          .populate({ path: 'comments.author', model: User, select: ['username', 'imgSrc'] })
+          .populate({ path: 'comments.likes', model: User, select: ['username', 'imgSrc'] })
+          .then(posts => {
+            res.status(200).json({
+              "success": true,
+              "data": {
+                user: user,
+                postCount: posts.length,
+                likeCount: posts.reduce((count, post) => count + post.likes.length, 0),
+                posts: posts,
+              },
+            });
+          }).catch(err => {
+            console.log(err)
+            res.status(500).json({
+              "success": false,
+              "errors": err.message
+            });
+          })
 
-    }
-    else
-      res.status(404).json({
+      }
+      else
+        res.status(404).json({
+          "success": false,
+          "errors": "User not Found"
+        });
+    }).catch(err => {
+      console.log(err)
+      res.status(500).json({
         "success": false,
-        "errors": "User not Found"
+        "errors": err.message
       });
-  }).catch(err => {
-    console.log(err)
-    res.status(500).json({
-      "success": false,
-      "errors": err.message
-    });
-  })
+    })
 });
 
 

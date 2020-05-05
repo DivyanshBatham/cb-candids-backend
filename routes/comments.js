@@ -1,8 +1,6 @@
 const express = require('express');
-const Post = require('../models/post');
-const User = require('../models/user');
-const jwtAuthCheck = require('../helpers/jwtAuthCheck');
-const authorizationCheck = require('../helpers/authorizationCheck');
+const { User, Post } = require('../models');
+const { jwtAuthCheck, authorizationCheck } = require('./middlewares');
 const commentsRouter = express.Router({ mergeParams: true });
 
 
@@ -54,7 +52,7 @@ commentsRouter.post("/", jwtAuthCheck, (req, res) => {
                                 ...comment,
                                 isAuthor: comment.author._id.toString() === req.userId
                             })),
-                            isLiked: post.likes.findIndex( like => like._id.toString() === req.userId ) !== -1
+                            isLiked: post.likes.findIndex(like => like._id.toString() === req.userId) !== -1
                         }
                     });
                 }

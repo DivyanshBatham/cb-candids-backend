@@ -1,14 +1,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const fs = require('fs');
-const Post = require('../models/post');
-const User = require('../models/user');
-const jwtAuthCheck = require('../helpers/jwtAuthCheck');
-const authorizationCheck = require('../helpers/authorizationCheck');
-const postsRouter = express.Router();
+const { User, Post } = require('../models');
+const { aws, upload } = require('../helpers');
+const { jwtAuthCheck, authorizationCheck } = require('./middlewares');
 const commentsRouter = require('./comments');
-const upload = require('../helpers/multer');
-const aws = require('../helpers/aws');
+const postsRouter = express.Router();
 
 // Fetch all Posts:
 postsRouter.get("/", jwtAuthCheck, (req, res) => {

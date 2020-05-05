@@ -1,13 +1,10 @@
 const express = require('express');
-const userRouter = express.Router();
 const mongoose = require('mongoose');
-const User = require('../models/user.js')
-const Post = require('../models/post.js')
-const upload = require('../helpers/multer');
-const randomColor = require('../helpers/RandomColor');
-const jwtAuthCheck = require('../helpers/jwtAuthCheck');
-const aws = require('../helpers/aws');
-var Jimp = require('jimp');
+const Jimp = require('jimp');
+const { User, Post } = require('../models');
+const { aws, upload, randomColor } = require('../helpers');
+const { jwtAuthCheck } = require('./middlewares');
+const userRouter = express.Router();
 
 
 // Fetch all Users (DEBUGGING ONLY)
@@ -30,7 +27,7 @@ userRouter.get("/", (req, res) => {
 
 
 // Fetch Users Options:
-userRouter.get("/options", (req, res) => {
+userRouter.get("/options", jwtAuthCheck, (req, res) => {
   const { search = '' } = req.query;
   User.find(
     { username: { $regex: new RegExp(`${search}`, 'i') } },
